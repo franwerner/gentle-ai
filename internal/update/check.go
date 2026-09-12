@@ -172,7 +172,7 @@ func usesBetaMainHeadCheck(tool ToolInfo, currentVersion string) bool {
 }
 
 func isGentleAIRepo(tool ToolInfo) bool {
-	return tool.Name == "gentle-ai" && strings.EqualFold(tool.Owner, "Gentleman-Programming") && tool.Repo == "gentle-ai"
+	return tool.Name == "gentle-ai" && strings.EqualFold(tool.Owner, "franwerner") && tool.Repo == "gentle-ai"
 }
 
 func isBetaUpdateChannel() bool {

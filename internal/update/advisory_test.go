@@ -212,3 +212,14 @@ func TestFetchAdvisory_HTTP404(t *testing.T) {
 		t.Errorf("FetchAdvisory().Message = %q on HTTP 404, want empty", a.Message)
 	}
 }
+
+// TestAdvisoryURL_DefaultPointsUpstream verifies that the package-level
+// default (never overridden here, unlike every other test in this file)
+// still fetches from the upstream repository -- deliberately NOT repointed
+// by the release-identity fork.
+func TestAdvisoryURL_DefaultPointsUpstream(t *testing.T) {
+	want := "https://github.com/Gentleman-Programming/gentle-ai/releases/download/advisory/advisory.json"
+	if advisoryURL != want {
+		t.Fatalf("advisoryURL default = %q, want %q", advisoryURL, want)
+	}
+}
