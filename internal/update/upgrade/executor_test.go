@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -44,6 +45,25 @@ func makeResult(name string, status update.UpdateStatus, oldVer, newVer string, 
 		LatestVersion:    newVer,
 		Status:           status,
 	}
+}
+
+// gentleAIToolInfo returns gentle-ai's real registry entry, so a test can
+// assert against its actual Owner/Repo instead of a synthetic fixture value.
+func gentleAIToolInfo(t *testing.T) update.ToolInfo {
+	t.Helper()
+	for _, tool := range update.Tools {
+		if tool.Name == "gentle-ai" {
+			return tool
+		}
+	}
+	t.Fatal("gentle-ai not found in update.Tools")
+	return update.ToolInfo{}
+}
+
+// wantManualHint mirrors executor.go's dev-build ManualHint format, so tests
+// assert against the tool's own identity rather than a substring.
+func wantManualHint(owner, repo string) string {
+	return fmt.Sprintf("source build — upgrade manually or install a release binary from https://github.com/%s/%s/releases", owner, repo)
 }
 
 // --- TestExecute_NoopWhenNothingIsExecutable ---
@@ -495,8 +515,14 @@ func TestExecute_DevBuildIsSkipped(t *testing.T) {
 		return mockCmd("echo", "ok")
 	}
 
+	gentleAI := gentleAIToolInfo(t)
 	results := []update.UpdateResult{
-		makeResult("gentle-ai", update.DevBuild, "dev", "1.0.0", update.InstallBinary),
+		{
+			Tool:             gentleAI,
+			InstalledVersion: "dev",
+			LatestVersion:    "1.0.0",
+			Status:           update.DevBuild,
+		},
 		makeResult("engram", update.UpdateAvailable, "0.3.0", "0.4.0", update.InstallGoInstall),
 	}
 	results[1].Tool.GoImportPath = "github.com/Gentleman-Programming/engram/cmd/engram"
@@ -517,8 +543,15 @@ func TestExecute_DevBuildIsSkipped(t *testing.T) {
 	if devResult.Status != UpgradeSkipped {
 		t.Errorf("gentle-ai DevBuild Status = %q, want UpgradeSkipped", devResult.Status)
 	}
-	if devResult.ManualHint == "" {
-		t.Errorf("gentle-ai DevBuild ManualHint must be non-empty")
+	// gentle-ai's own hint must follow its moved (fork) identity, not the
+	// upstream organisation — Requirement "The dev-build upgrade hint
+	// derives from the failing tool's own identity", scenario "gentle-ai's
+	// own hint follows its moved identity".
+	if want := wantManualHint(gentleAI.Owner, gentleAI.Repo); devResult.ManualHint != want {
+		t.Errorf("gentle-ai DevBuild ManualHint = %q, want %q", devResult.ManualHint, want)
+	}
+	if strings.Contains(devResult.ManualHint, "Gentleman-Programming") {
+		t.Errorf("gentle-ai DevBuild ManualHint still names the upstream organisation: %q", devResult.ManualHint)
 	}
 
 	// engram should still be processed as succeeded.
@@ -591,9 +624,20 @@ func TestExecute_DevBuildSurfacedAsSkipped(t *testing.T) {
 		return mockCmd("echo", "ok")
 	}
 
+	otherTool := update.UpdateResult{
+		Tool: update.ToolInfo{
+			Name:  "acme-cli",
+			Owner: "acme-org",
+			Repo:  "acme-cli",
+		},
+		InstalledVersion: "dev",
+		LatestVersion:    "2.0.0",
+		Status:           update.DevBuild,
+	}
 	results := []update.UpdateResult{
 		makeResult("gentle-ai", update.DevBuild, "dev", "1.0.0", update.InstallBinary),
 		makeResult("engram", update.UpdateAvailable, "0.3.0", "0.4.0", update.InstallGoInstall),
+		otherTool,
 	}
 	results[1].Tool.GoImportPath = "github.com/Gentleman-Programming/engram/cmd/engram"
 
@@ -616,8 +660,26 @@ func TestExecute_DevBuildSurfacedAsSkipped(t *testing.T) {
 		t.Errorf("gentle-ai DevBuild Status = %q, want UpgradeSkipped", devResult.Status)
 	}
 
-	if devResult.ManualHint == "" {
-		t.Errorf("gentle-ai DevBuild ManualHint must be non-empty — should explain dev/source build")
+	if want := wantManualHint(results[0].Tool.Owner, results[0].Tool.Repo); devResult.ManualHint != want {
+		t.Errorf("gentle-ai DevBuild ManualHint = %q, want %q", devResult.ManualHint, want)
+	}
+
+	// A dev-build tool that is not gentle-ai MUST get a hint naming its own
+	// owner/repo, never a fixed organisation literal — Requirement "The
+	// dev-build upgrade hint derives from the failing tool's own identity",
+	// scenario "the hint follows the tool".
+	var otherResult *ToolUpgradeResult
+	for i := range report.Results {
+		if report.Results[i].ToolName == "acme-cli" {
+			r := report.Results[i]
+			otherResult = &r
+		}
+	}
+	if otherResult == nil {
+		t.Fatalf("acme-cli DevBuild must appear in Results as UpgradeSkipped, but was not found")
+	}
+	if want := wantManualHint(otherTool.Tool.Owner, otherTool.Tool.Repo); otherResult.ManualHint != want {
+		t.Errorf("acme-cli DevBuild ManualHint = %q, want %q", otherResult.ManualHint, want)
 	}
 
 	// engram (UpdateAvailable) must still be processed normally.
