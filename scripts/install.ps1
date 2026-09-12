@@ -25,8 +25,9 @@ $ErrorActionPreference = "Stop"
 $null = & chcp 65001 2>$null
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
-$GITHUB_OWNER = "Gentleman-Programming"
-$GITHUB_REPO = "gentle-ai"
+$RELEASE_OWNER = "franwerner"
+$RELEASE_REPO = "gentle-ai"
+$GO_MODULE_PATH = "github.com/gentleman-programming/gentle-ai/v2"
 $BINARY_NAME = "gentle-ai"
 $WINDOWS_DISTRIBUTION_HOLD = "Windows binary distribution and Scoop are temporarily unavailable until publicly trusted Authenticode signing is enforced."
 $STABLE_SOURCE_COMMAND = "go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@latest"
@@ -94,7 +95,7 @@ function Install-ViaGo {
     # /v2 is part of the module path, not decoration: Go refuses to resolve a
     # module whose tags are v2.x unless the import path carries the major
     # version suffix.
-    $goPackage = "github.com/$($GITHUB_OWNER.ToLower())/$GITHUB_REPO/v2/cmd/$BINARY_NAME@$version"
+    $goPackage = "$GO_MODULE_PATH/cmd/$BINARY_NAME@$version"
     Write-Info "Running: go install $goPackage"
 
     if ($Channel -eq "beta") {
@@ -167,7 +168,7 @@ function Show-NextSteps {
     } else {
         Write-Host "  Run '$BINARY_NAME' to start the TUI installer" -ForegroundColor Cyan
     }
-    Write-Host "Docs: https://github.com/$GITHUB_OWNER/$GITHUB_REPO" -ForegroundColor DarkGray
+    Write-Host "Docs: https://github.com/$RELEASE_OWNER/$RELEASE_REPO" -ForegroundColor DarkGray
     Write-Host ""
 }
 

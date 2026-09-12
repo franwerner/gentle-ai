@@ -6,19 +6,20 @@ set -euo pipefail
 # Ecosystem, Frameworks, Workflows for AI coding agents.
 #
 # Usage:
-#   curl -sL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash
+#   curl -sL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh | bash
 #
 # Or download and run:
-#   curl -sLO https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh
+#   curl -sLO https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh
 #   chmod +x install.sh
 #   ./install.sh
 # ============================================================================
 
-GITHUB_OWNER="Gentleman-Programming"
-GITHUB_REPO="gentle-ai"
+RELEASE_OWNER="franwerner"
+RELEASE_REPO="gentle-ai"
 BINARY_NAME="gentle-ai"
-BREW_TAP="Gentleman-Programming/homebrew-tap"
-BREW_FORMULA_REF="gentleman-programming/tap/${BINARY_NAME}"
+GO_MODULE_PATH="github.com/gentleman-programming/gentle-ai/v2"
+BREW_TAP="franwerner/homebrew-tap"
+BREW_FORMULA_REF="franwerner/tap/${BINARY_NAME}"
 
 # ============================================================================
 # Color support
@@ -105,7 +106,7 @@ Install methods (auto-detected in priority order):
   3. binary  — Pre-built binary from GitHub Releases
 
 Examples:
-  curl -sL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/main/scripts/install.sh | bash
+  curl -sL https://raw.githubusercontent.com/${RELEASE_OWNER}/${RELEASE_REPO}/main/scripts/install.sh | bash
   ./install.sh --method binary
   ./install.sh --channel beta
   ./install.sh --method binary --dir \$HOME/.local/bin
@@ -273,14 +274,7 @@ install_go() {
     if [ "${CHANNEL}" = "beta" ]; then
         version="main"
     fi
-    # Lowercase the owner portably: ${var,,} needs bash 4+, but macOS ships
-    # bash 3.2, so piping `| bash` would fail with "bad substitution".
-    local owner_lc
-    owner_lc="$(printf '%s' "$GITHUB_OWNER" | tr '[:upper:]' '[:lower:]')"
-    # /v2 is part of the module path, not decoration: Go refuses to resolve a
-    # module whose tags are v2.x unless the import path carries the major
-    # version suffix.
-    local go_package="github.com/${owner_lc}/${GITHUB_REPO}/v2/cmd/${BINARY_NAME}@${version}"
+    local go_package="${GO_MODULE_PATH}/cmd/${BINARY_NAME}@${version}"
 
     info "Running: go install ${go_package}"
     if [ "${CHANNEL}" = "beta" ]; then
@@ -332,7 +326,7 @@ prepend_go_env_pattern() {
 # ============================================================================
 
 get_latest_version() {
-    local url="https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest"
+    local url="https://api.github.com/repos/${RELEASE_OWNER}/${RELEASE_REPO}/releases/latest"
 
     info "Fetching latest release from GitHub..."
 
@@ -367,8 +361,8 @@ install_binary() {
 
     local archive_name
     archive_name="$(get_archive_name "$VERSION_NUMBER")"
-    local download_url="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/${archive_name}"
-    local checksums_url="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/checksums.txt"
+    local download_url="https://github.com/${RELEASE_OWNER}/${RELEASE_REPO}/releases/download/${LATEST_VERSION}/${archive_name}"
+    local checksums_url="https://github.com/${RELEASE_OWNER}/${RELEASE_REPO}/releases/download/${LATEST_VERSION}/checksums.txt"
 
     # Create temp directory — clean up on exit
     local tmpdir
@@ -549,7 +543,7 @@ print_next_steps() {
     echo -e "  ${CYAN}3.${NC} Follow the interactive prompts"
     echo ""
     echo -e "${DIM}For help: ${BINARY_NAME} --help${NC}"
-    echo -e "${DIM}Docs:     https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}${NC}"
+    echo -e "${DIM}Docs:     https://github.com/${RELEASE_OWNER}/${RELEASE_REPO}${NC}"
     echo ""
 }
 
