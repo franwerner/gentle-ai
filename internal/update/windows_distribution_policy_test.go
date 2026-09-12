@@ -301,6 +301,21 @@ func TestReleaseDistributionPolicyAssertionFailsClosed(t *testing.T) {
 					"      - name: Create release through GitHub API\n        run: gh api --method POST repos/Gentleman-Programming/gentle-ai/releases\n\n      - name: Verify published assets from GitHub\n")
 			},
 		},
+		{
+			// The Homebrew-publisher owner is pinned independently at three
+			// points: .goreleaser.yaml, its expectedGoReleaserYAML mirror in
+			// policy.go, and validateArtifacts' own literal at policy.go:422.
+			// This mutation leaves the first two consistent with each other
+			// (both franwerner, untouched) and diverges only the resolved
+			// artifact's Homebrew owner, proving the third point gates on its
+			// own rather than being satisfied by the config/mirror pair.
+			name: "resolved Homebrew publisher diverges from the config it was built from",
+			mutate: func(t *testing.T, root string) {
+				replaceReleasePolicyFile(t, root, filepath.Join("dist", "artifacts.json"),
+					`"owner":"franwerner"`,
+					`"owner":"Gentleman-Programming"`)
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := newReleasePolicyFixture(t)
@@ -521,7 +536,7 @@ const releasePolicyArtifactsFixture = `[
   {"name":"gentle-ai-review-provider-contract-1.2.0.tar.gz","path":"dist/gentle-ai-review-provider-contract-1.2.0.tar.gz","type":"Archive","extra":{"Binaries":[],"Format":"tar.gz","ID":"review-provider-contract"}},
   {"name":"gentle-ai-release-provenance-v1.tar.gz","path":"dist/gentle-ai-release-provenance-v1.tar.gz","type":"Archive","extra":{"Binaries":[],"Format":"tar.gz","ID":"release-provenance"}},
   {"name":"checksums.txt","path":"dist/checksums.txt","type":"Checksum","extra":{}},
-  {"name":"gentle-ai.rb","path":"dist/homebrew/Formula/gentle-ai.rb","type":"Homebrew Formula","extra":{"BrewConfig":{"name":"gentle-ai","repository":{"owner":"Gentleman-Programming","name":"homebrew-tap","token":"{{ .Env.HOMEBREW_TAP_TOKEN }}"},"directory":"Formula"}}}
+  {"name":"gentle-ai.rb","path":"dist/homebrew/Formula/gentle-ai.rb","type":"Homebrew Formula","extra":{"BrewConfig":{"name":"gentle-ai","repository":{"owner":"franwerner","name":"homebrew-tap","token":"{{ .Env.HOMEBREW_TAP_TOKEN }}"},"directory":"Formula"}}}
 ]`
 
 const releasePolicyRunID = "release-policy-test-run"
