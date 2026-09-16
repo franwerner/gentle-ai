@@ -505,7 +505,13 @@ func TestKilocodeReviewSettingsMatchCurrentMainBaseline(t *testing.T) {
 	// Kilocode inherits that metadata, not additional native RDD support.
 	// #4324 appends canonical remote authorization to managed executor prompts;
 	// native permissions and the primary orchestrator remain unchanged.
-	const want = "d2f4aad13b3930df018219bd91ea56ef8ddac3bc3978cd0374b1857e2a1c5944"
+	// recordstore-fact-injection: the Native SDD Dispatcher Guard canonical
+	// body gains the recordStore report-and-forward sentence, and the
+	// openrecord Activation section is rewritten to consume the injected fact
+	// instead of shelling out. Kilo renders the guard through the OpenCode
+	// orchestrator asset, so the baseline is rederived. Authorized scope
+	// extension (user gate), not drift.
+	const want = "74d1e3d372958c050259ee392e9b1ee0bc43f006fc771dcfc24478528e294fcf"
 	if got != want {
 		t.Fatalf("Kilocode settings SHA-256 = %s, want current-main baseline %s", got, want)
 	}
