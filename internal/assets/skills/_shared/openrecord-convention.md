@@ -7,14 +7,18 @@ and emit a contradiction stop, without loading any skill openrecord itself emits
 
 ## Activation — declared, never presence-detected
 
-Consult `gentle-ai sdd-status --json` (or the equivalent status projection) and read
-`recordStore.resolved`. It is `openrecord` only when the workspace's `openspec/config.yaml` declares
-`sdd.record_store: openrecord` explicitly — the presence of an `.openrecord/` directory on disk does
-NOT activate this convention, even when the store is fully populated.
+Read the `recordStore` value your launch prompt injected — the dispatcher already resolved it and the
+orchestrator already forwarded it, so there is no status projection left for you to query yourself
+here; that step is already done for you. It is `openrecord` only when the workspace's
+`openspec/config.yaml` declares `sdd.record_store: openrecord` explicitly — the presence of an
+`.openrecord/` directory on disk does NOT activate this convention, even when the store is fully
+populated.
 
-**When `recordStore.resolved` is empty (undeclared), this convention does not apply.** Behave exactly
-as if openrecord were not installed: no guard, no warning, no mention of a missing declaration. This
-degradation is silent on purpose — every phase runs exactly as it does today.
+**When the injected `recordStore` is empty (undeclared), this convention does not apply.** Behave
+exactly as if openrecord were not installed: no guard, no warning, no mention of a missing declaration.
+This degradation is silent on purpose — every phase runs exactly as it does today. Acting differently
+according to this injected value is exactly what this convention is for; only determining it yourself,
+rather than reading what was already given to you, is forbidden.
 
 ## Per-phase responsibility map
 
