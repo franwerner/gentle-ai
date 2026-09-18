@@ -2,8 +2,16 @@
 
 <--:openrecord-->
 
-This file is self-contained: a phase agent that has read only this file can run every retrieval move
-and emit a contradiction stop, without loading any skill openrecord itself emits.
+This file is not self-contained. It fixes which phase does what and carries the two guarantees no
+emitted skill carries; the retrieval and write **mechanics** live in the skills openrecord itself
+emits — `openrecord-consult/SKILL.md` and `openrecord-capture/SKILL.md`, written as siblings of the
+`_shared/` directory this file sits in, under the same skills root. Where a section below sends you to
+one of them, open it and follow it there.
+
+**If the skill a section names is not there, say so and stop that line of work.** A runtime can hold
+this convention without holding those skills — it may have no skills directory at all, or it may never
+have been selected for openrecord's fan-out. Never reconstruct the moves from memory or from an older
+copy of this file: a remembered command shape is exactly the drift this delegation exists to end.
 
 ## Activation — declared, never presence-detected
 
@@ -24,11 +32,11 @@ rather than reading what was already given to you, is forbidden.
 
 | Phase | Responsibility |
 | --- | --- |
-| `sdd-explore` | **Consults.** Runs the full walk below and reports how each record surfaced and which candidates it examined and ruled out. |
+| `sdd-explore` | **Consults.** Runs the walk documented in `skills/openrecord-consult/SKILL.md` and reports how each record surfaced and which candidates it examined and ruled out. |
 | `sdd-propose` | **Contradiction-checks.** Runs the "When your work contradicts an accepted record" check below before its approval gate is offered. |
 | `sdd-spec` | **Contradiction-checks.** Same check as propose. |
 | `sdd-design` | **Consults and contradiction-checks.** Additionally proposes new records — `## Architecture Decisions` is where a new record appears as a proposal with its rationale. Design never writes a record file. |
-| `sdd-apply` | **Writes.** The sole writer — see "Writing records" below. |
+| `sdd-apply` | **Writes.** The sole writer — the contract is under "Writing records" below, the commands in `skills/openrecord-capture/SKILL.md`. |
 | `sdd-verify` | **Validates.** Runs `openrecord validate` for structural shape, and separately checks that each record's prose still describes the system as actually built — a check the binary cannot do. |
 
 `sdd-init`, `sdd-onboard`, `sdd-research`, `sdd-tasks` and `sdd-archive` never touch the record store.
@@ -36,107 +44,14 @@ The remediation loop inherits `sdd-apply`'s writer contract; `sdd-archive` write
 
 ## The walk (consult, propose, spec, design)
 
-**1. Which surface are you touching?**
+The retrieval moves — which component owns a path, how to descend the levels, how to search literally
+and by meaning, how to tell a search that ran from one that could not, and how to state what you found
+and what you ruled out — are documented in `skills/openrecord-consult/SKILL.md`, beside this file under
+the same skills root. Run the walk from there. This convention keeps no copy of it, precisely so that a
+copy cannot fall out of step with the binary.
 
-```
-openrecord component owners <repo-relative-path>
-→ owner: <component>
-  map:   decisions/<component>
-  specs: specs/<type>/<capability>.md
-```
-
-Returns the component that owns the path. If it reports nothing declared, stop and say so — without a
-declared surface there is nothing to check against, and guessing which component a file belongs to
-defeats the whole mechanism.
-
-It answers both halves. `map` is where the decisions governing this file are filed. `specs` is every
-capability that declares this surface — that cannot be resolved from a path, because a capability
-crosses surfaces and names them in its frontmatter instead of living under one. Both lists are the
-starting point, not the answer: descending is still what enumerates.
-
-**2. Descend, reading descriptions.**
-
-Each level returns the `title` and `description` of everything hanging off it, plus a `kind` —
-`group` means descend, `record` means open. Descriptions arrive in the response; never open an index
-file directly.
-
-```
-openrecord map --for decisions/<component>
-→ [group]  <concern>   "…description saying when to descend here."
-  [record] <slug>       "…"
-```
-
-Descend into every level whose description matches what you are about to do — not only the one that
-matches best. Picking one is the most common way to miss the record that governs you. The descent
-bottoms out on its own: a subgroup is capped at one level, so there is never a third step down.
-
-Descending is cheap; opening is not — a level costs a few hundred tokens of titles and descriptions,
-less than reading one record. Stop when every branch you descended reached records and you decided
-open-or-not on each — not when you found something, since finding one record says nothing about
-whether a neighbouring concern holds another.
-
-**3. Search when you do not know where to look.**
-
-```
-openrecord grep "<wording>" --for decisions/<component>
-→ decisions/<component>/<concern>/<slug>.md   [record]  line N, K hits
-```
-
-One entry per file, never per line, with `hits` saying how many lines matched — the difference between
-*mentioned once in passing* and *this is what the record is about*. `grep` is literal: it hits exactly
-when you remember the wording, and misses entirely when the record says the same thing in other words.
-A hit is a file, not a level — open a `record`; descend into a `group`'s **parent**.
-
-**4. Search by meaning with `qmd` directly.** openrecord's own `qmd` subcommand has only `status` and
-`install` — there is no `qmd query`. Invoke the `qmd` binary itself:
-
-```
-qmd query "<question in natural language>" -c <project>-decisions-<component>
-```
-
-Query the collection for the component you are working in — decisions are one collection per
-component, mirroring the fact that they are closed by component. Pass several `-c` flags only when
-deliberately looking across surfaces.
-
-A `qmd://` result is not a coordinate: `qmd://<project>-decisions-<component>/<concern>/<slug>.md:12`
-translates to `decisions/<component>/<concern>/<slug>.md` — drop the scheme, read the surface out of
-the collection name, drop the line number.
-
-**Check that the search actually ran before believing it found nothing.** A provider that is
-unreachable or whose credential expired produces "no results" with a clean exit — the same answer as a
-genuine miss. Run `openrecord qmd status` first: it says whether qmd runs at all. If it is not
-installed or the collections are not registered, say so and continue with what the other three moves
-found — a missing capability, not a failure.
-
-**No single move proves an absence.** Coverage — has everything been accounted for — comes from
-reading the indexes on the way down; a record that never surfaced in a search leaves no trace of its
-absence. Search locates quickly; it is never the evidence that nothing was missed.
-
-**5. Read the ones that govern you. Fully.** A record is prose written to be understood, not scanned.
-
-## Say what you found
-
-End the walk with this stated, not held in your head:
-
-```
-Governs this work:
-
-- decisions/<component>/<concern>/<slug>.md   [accepted]
-  Constrains you: <what you may not do>.
-  Surfaced by: <owners | descent | grep | qmd>
-
-Looked at, does not apply:
-- decisions/<component>/<other-concern> — <why it does not touch this work>.
-```
-
-"Constrains you" states the consequence, not a summary a reader would have to work out themselves.
-"Surfaced by" says how much weight the finding carries — a record found by descending into the concern
-that owns your work is stronger evidence than one a search ranked highly. "Looked at, does not apply"
-is the only thing separating *does not apply* from *nobody looked* — omit it and a reader cannot tell
-which happened.
-
-A record with `status: accepted` governs you; build within it. A record with `status: pending` settles
-nothing — do not treat it as a constraint, and do not treat it as permission either.
+If that file is not there for you, say so and stop the consult, per the preamble — do not improvise the
+walk.
 
 ## When your work contradicts an accepted record
 
@@ -180,12 +95,10 @@ stale, that is a fine outcome; it is just not yours to conclude alone.
 Only `sdd-apply` writes into the record store, in the same step that implements the governing code —
 never a separate pass, and never design or archive.
 
-- **A record that does not exist yet** is created with `openrecord record write` — this replaces the
-  whole file, so it is only ever the right verb for a brand-new record.
-- **A record that already exists** is updated with `openrecord record edit --section "<heading>"` — a
-  section-addressed patch. Every section the change does not name keeps its previous content
-  byte-for-byte. `sdd-apply` establishes which case it is — new or existing — before calling either
-  command; picking the wrong verb destroys content `record write` would silently overwrite.
+The write commands — `openrecord level add`, `openrecord record write --body-file`, `openrecord record
+edit --section --body-file`, and which verb applies to a record that does not exist yet versus one that
+already does — are documented in `skills/openrecord-capture/SKILL.md`, beside this file under the same
+skills root.
 
 **Never touch a record file with a file-editing tool.** A record is a `.md`, and a phase carrying Edit
 and Write tools will reach for them exactly as it would for any other file — but every guard openrecord
