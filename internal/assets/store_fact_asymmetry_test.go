@@ -78,7 +78,8 @@ var (
 		"reporting it in `recordStore",
 	}
 	forwardMarkers = []string{
-		"into every phase launch",
+		"`recordStore.resolved` into every phase launch", // claude/sdd-orchestrator-workflow.md:35
+		"`recordStore` into every phase launch",          // skills/_shared/sdd-status-contract.md:22
 	}
 )
 
@@ -784,6 +785,42 @@ func TestC4AcceptsBothDispatcherRegisters(t *testing.T) {
 		if len(findings) != 0 {
 			t.Fatalf("c4ForwardFraming(%s) = %d findings, want 0: %+v", name, len(findings), findings)
 		}
+	}
+}
+
+// TestC4FlagsForwardClauseRelocatedToArtifactStore pins defect 2's relocation
+// shape: the report framing stays attached to recordStore elsewhere in the
+// section, but the forward phrase itself has moved onto a sentence naming
+// only artifactStore. Before the anchored markers, this shape passed
+// vacuously — the bare phrase "into every phase launch" still matched.
+func TestC4FlagsForwardClauseRelocatedToArtifactStore(t *testing.T) {
+	content := MustRead("skills/_shared/sdd-status-contract.md")
+	section := markdownSection(content, "## Native Engine")
+	if section == "" {
+		t.Fatal("heading \"## Native Engine\" not found")
+	}
+
+	if findings := c4ForwardFraming("shipped-status-contract", section, 1); len(findings) != 0 {
+		t.Fatalf("c4ForwardFraming(shipped) = %d findings, want 0: %+v", len(findings), findings)
+	}
+
+	const shippedForwardClause = "Forward `recordStore` into every phase launch alongside `artifactStore` and `artifactPaths`; never resolve it yourself."
+	const relocatedClause = "Forward `artifactStore` into every phase launch alongside `artifactPaths`; never resolve it yourself."
+	mutated := mustMutate(t, section, shippedForwardClause, relocatedClause)
+
+	if !strings.Contains(mutated, "into every phase launch") {
+		t.Fatal("mutated section no longer contains the bare phrase \"into every phase launch\" — the mutation removed more than intended")
+	}
+	if !strings.Contains(mutated, "recordStore") {
+		t.Fatal("mutated section no longer names recordStore anywhere — this would be the deletion shape, not the relocation shape")
+	}
+
+	findings := c4ForwardFraming("mutant-status-contract", mutated, 1)
+	if len(findings) != 1 {
+		t.Fatalf("c4ForwardFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
+	}
+	if !strings.Contains(findings[0].Why, "forward") {
+		t.Fatalf("finding.Why = %q, want it to name the missing forward marker", findings[0].Why)
 	}
 }
 
