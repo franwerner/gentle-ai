@@ -22,6 +22,8 @@ Call `mem_save` IMMEDIATELY and WITHOUT BEING ASKED after any of these:
 
 Self-check after EVERY task: "Did I make a decision, fix a bug, learn something non-obvious, or establish a convention? If yes, call mem_save NOW."
 
+**Record-store carve-out.** Architecture and design decisions are exempt from the save order above when this workspace's `openspec/config.yaml` (or `.yml`) declares `sdd.record_store: openrecord` — they belong to that record store, not to Engram. Check the declaration yourself; the presence of an `.openrecord/` directory on disk does NOT activate this carve-out, even when the store is fully populated. No other save trigger is affected.
+
 ### DELIVERY GUARANTEE — saving is not replying
 
 Saving to memory is internal bookkeeping. It NEVER counts as answering the user, and the user never sees your tool calls or the content you store.
@@ -123,6 +125,12 @@ MCP server instructions and the SessionStart hook. Always-on rules:
 - Call `mem_save` PROACTIVELY after any decision, bugfix, discovery, convention,
   or config change — do not wait to be asked. Use `capture_prompt: false` for
   automated/SDD artifacts.
+- **Record-store carve-out.** Architecture and design decisions are exempt from
+  the save order above when this workspace's `openspec/config.yaml` (or `.yml`)
+  declares `sdd.record_store: openrecord` — they belong to that record store,
+  not to Engram. Check the declaration yourself; the presence of an
+  `.openrecord/` directory on disk does NOT activate this carve-out, even when
+  the store is fully populated. No other save trigger is affected.
 - On any reference to past work: `mem_context` → `mem_search` → `mem_get_observation`.
 - Before saying "done", call `mem_session_summary`.
 - Saving to memory is bookkeeping, never the reply: it NEVER counts as answering.
