@@ -32,7 +32,7 @@ The system MUST render the Codex AGENTS.md protocol section, the `model_instruct
 
 ### Requirement: Conditional per-adapter section slimming
 
-The system MUST slim an adapter's system-prompt Engram protocol section ONLY when a redundant channel delivering equivalent protocol content is verified for that adapter's runtime. The set of adapters with a verified redundant channel is owned by design. For any adapter where no redundant channel is verified, the system MUST inject the full section unchanged. When a section is slimmed, the slim variant MUST include a pointer directing the model to where the full protocol content lives.
+The system MUST slim an adapter's system-prompt Engram protocol section ONLY when a redundant channel delivering equivalent protocol content is verified for that adapter's runtime. The set of adapters with a verified redundant channel is owned by design. For any adapter where no redundant channel is verified, the system MUST inject the full section as rendered from the canonical asset. When a section is slimmed, the slim variant MUST include a pointer directing the model to where the full protocol content lives. The slim variant MUST ALSO carry any normative rule that the verified redundant channel does not itself deliver; such a rule is not duplication, because no channel delivers it otherwise.
 
 #### Scenario: Verified adapter gets the slim section
 
@@ -45,7 +45,15 @@ The system MUST slim an adapter's system-prompt Engram protocol section ONLY whe
 
 - GIVEN an adapter is NOT on the design-verified redundant-channel list
 - WHEN gentle-ai injects the Engram protocol section for that adapter
-- THEN it MUST inject the full section, unchanged from today's content
+- THEN it MUST inject the full section as rendered from the canonical asset
+- AND no adapter-specific content MUST be dropped from it
+
+#### Scenario: Slim carries a normative rule the redundant channel omits
+
+- GIVEN a normative rule that the verified redundant channel does not deliver
+- WHEN gentle-ai renders the slim variant for a verified adapter
+- THEN the slim variant MUST state that rule
+- AND stating it MUST NOT be treated as duplication of the redundant channel
 
 ---
 
