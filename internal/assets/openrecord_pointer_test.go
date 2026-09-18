@@ -68,6 +68,11 @@ const (
 	// openrecord, decision is not an offered save type".
 	persistenceEnumDropSentence = "When `recordStore.resolved: openrecord`, the `mem_save` instruction above is conditional: `decision` drops from the `type: \"{decision|bugfix|discovery|pattern}\"` enum at line 121."
 
+	// persistenceUnaffectedTypesSentence covers the spec scenario "The
+	// trailing carve-out sentence MUST be pinned": the other three Non-SDD
+	// types stay unconditional even though decision drops out.
+	persistenceUnaffectedTypesSentence = "`bugfix`, `discovery`, and `pattern` are unaffected and still go to Engram exactly as written above."
+
 	// engramArtifactsUnaffectedSentence covers the spec scenario "A phase
 	// artifact save is unaffected under openrecord".
 	engramArtifactsUnaffectedSentence = "SDD phase artifacts — every phase from `explore` through `archive-report` — MUST keep saving to Engram with `type: architecture` in every `recordStore.resolved` mode, `openrecord` included."
@@ -89,7 +94,7 @@ func TestOpenRecordSharedAssetsCarveOutIsDelimitedAndLiteral(t *testing.T) {
 	}{
 		{
 			path:              "skills/_shared/persistence-contract.md",
-			requiredSentences: []string{persistenceEnumDropSentence},
+			requiredSentences: []string{persistenceEnumDropSentence, persistenceUnaffectedTypesSentence},
 		},
 		{
 			path:              "skills/_shared/engram-convention.md",
@@ -157,6 +162,41 @@ func TestOpenRecordNonSDDEnumUnchangedOutsideBlock(t *testing.T) {
 		if !strings.Contains(enumLiteral, value) {
 			t.Fatalf("Non-SDD type: enum literal %q is missing %q", enumLiteral, value)
 		}
+	}
+}
+
+// TestCarveOutPinFlagsDeletedSentence pins defect 1: the persistence-contract
+// carve-out block's requiredSentences must be able to fail. It first asserts
+// both pins are satisfied on the shipped, unmutated block (positive, first),
+// then — one subtest per sentence — deletes that sentence via mustMutate and
+// asserts missingCarveOutSentences reports exactly that sentence missing.
+func TestCarveOutPinFlagsDeletedSentence(t *testing.T) {
+	content, err := Read("skills/_shared/persistence-contract.md")
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	_, inside, _ := splitOpenRecordBlock(t, content)
+
+	both := []string{persistenceEnumDropSentence, persistenceUnaffectedTypesSentence}
+	if missing := missingCarveOutSentences(inside, both); len(missing) != 0 {
+		t.Fatalf("missingCarveOutSentences(shipped, both) = %v, want none missing", missing)
+	}
+
+	sentences := map[string]string{
+		"enum-drop-sentence":        persistenceEnumDropSentence,
+		"unaffected-types-sentence": persistenceUnaffectedTypesSentence,
+	}
+	for name, sentence := range sentences {
+		t.Run(name, func(t *testing.T) {
+			mutated := mustMutate(t, inside, sentence, "")
+			missing := missingCarveOutSentences(mutated, both)
+			if len(missing) != 1 {
+				t.Fatalf("missingCarveOutSentences(mutated, both) = %v, want exactly [%q]", missing, sentence)
+			}
+			if missing[0] != sentence {
+				t.Fatalf("missingCarveOutSentences(mutated, both) = %v, want [%q]", missing, sentence)
+			}
+		})
 	}
 }
 
