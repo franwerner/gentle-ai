@@ -55,6 +55,42 @@ func TestOpenRecordConventionFileIsDelimited(t *testing.T) {
 	assertDelimiterPaired(t, content)
 }
 
+// TestOpenRecordSharedAssetsCarveOutIsDelimitedAndLiteral pins the
+// record-store carve-out blocks added to the two shared SDD persistence
+// assets: the <--:openrecord--> pair is balanced in each, and each carries
+// its required literal — recordStore.resolved plus openrecord on both,
+// type: architecture on engram-convention.md.
+func TestOpenRecordSharedAssetsCarveOutIsDelimitedAndLiteral(t *testing.T) {
+	cases := []struct {
+		path             string
+		requiredLiterals []string
+	}{
+		{
+			path:             "skills/_shared/persistence-contract.md",
+			requiredLiterals: []string{"recordStore.resolved", "openrecord"},
+		},
+		{
+			path:             "skills/_shared/engram-convention.md",
+			requiredLiterals: []string{"recordStore.resolved", "openrecord", "type: architecture"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			content, err := Read(tc.path)
+			if err != nil {
+				t.Fatalf("Read() error = %v", err)
+			}
+			assertDelimiterPaired(t, content)
+			for _, literal := range tc.requiredLiterals {
+				if !strings.Contains(content, literal) {
+					t.Fatalf("%s missing required literal %q", tc.path, literal)
+				}
+			}
+		})
+	}
+}
+
 func assertDelimiterPaired(t *testing.T, content string) {
 	t.Helper()
 	opens := strings.Count(content, openRecordDelimOpen)
