@@ -340,12 +340,18 @@ func truncateRunes(s string, max int) string {
 	return string(r[:max])
 }
 
-// c1InjectionFraming fails when a surface names recordStore without also
-// framing it, within the same surface, as an injected and already-resolved
-// value.
+// c1InjectionFraming fails when a phase-facing surface does not name
+// recordStore at all — every registered facingPhase surface has a job to
+// tell the phase what recordStore is, so absence is mandatory to flag, not
+// merely conditional — or when it names recordStore without also framing it,
+// within the same surface, as an injected and already-resolved value.
 func c1InjectionFraming(path, text string, baseLine int) []finding {
 	if !strings.Contains(text, "recordStore") {
-		return nil
+		return []finding{{
+			Path: path, Line: baseLine, Kind: "surface",
+			Text: truncateRunes(text, 200),
+			Why:  "surface does not name recordStore at all — the injected-fact clause appears to have been removed",
+		}}
 	}
 	var findings []finding
 	if !containsAny(text, injectionMarkers) {
@@ -436,9 +442,9 @@ func c3cNoConflation(path string, units []unit) []finding {
 
 // c4ForwardFraming fails when a dispatcher-facing surface names no
 // recordStore mention at all (the clause has been removed), or names it
-// without also stating it is reported and stating it is forwarded. Unlike
-// C1, C4 is mandatory: on these two surfaces the mention itself is the
-// assertion, so it is never gated behind a conditional presence check.
+// without also stating it is reported and stating it is forwarded. Like C1,
+// C4 is mandatory: on these surfaces the mention itself is the assertion, so
+// it is never gated behind a conditional presence check.
 func c4ForwardFraming(path, text string, baseLine int) []finding {
 	if !strings.Contains(text, "recordStore") {
 		return []finding{{
@@ -786,6 +792,73 @@ func TestC4AcceptsBothDispatcherRegisters(t *testing.T) {
 			t.Fatalf("c4ForwardFraming(%s) = %d findings, want 0: %+v", name, len(findings), findings)
 		}
 	}
+}
+
+// TestC1FlagsPhaseSurfaceWithNoRecordStoreMention pins defect 3: a
+// phase-facing surface that names recordStore nowhere must fail C1 rather
+// than pass silently, mirroring what C4 has always done for dispatcher-facing
+// surfaces.
+func TestC1FlagsPhaseSurfaceWithNoRecordStoreMention(t *testing.T) {
+	content := MustRead("skills/_shared/openrecord-convention.md")
+	section := markdownSection(content, "## Activation")
+	if section == "" {
+		t.Fatal("heading \"## Activation\" not found")
+	}
+
+	if findings := c1InjectionFraming("shipped-activation", section, 1); len(findings) != 0 {
+		t.Fatalf("c1InjectionFraming(shipped) = %d findings, want 0: %+v", len(findings), findings)
+	}
+
+	mutated := section
+	for strings.Contains(mutated, "recordStore") {
+		mutated = mustMutate(t, mutated, "recordStore", "artifactStore")
+	}
+	if strings.Contains(mutated, "recordStore") {
+		t.Fatal("mutant still names recordStore somewhere")
+	}
+
+	findings := c1InjectionFraming("mutant-activation", mutated, 1)
+	if len(findings) != 1 {
+		t.Fatalf("c1InjectionFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
+	}
+}
+
+// TestC1FlagsRecordStoreNamedButUnframed proves the new mandatory-absence
+// branch (Task 4.1) did not swallow C1's two pre-existing framing branches: a
+// fully-framed synthetic surface passes first (positive), then stripping
+// each marker family in turn — via mustMutate, never by hand-writing the
+// mutant — must yield exactly one finding naming that family alone, distinct
+// from the absence finding TestC1FlagsPhaseSurfaceWithNoRecordStoreMention
+// covers. Synthetic on purpose: this fixture's subject is c1InjectionFraming's
+// control flow, not any shipped asset's wording.
+func TestC1FlagsRecordStoreNamedButUnframed(t *testing.T) {
+	const text = "The orchestrator injects the recordStore value; the dispatcher resolved it before you read it."
+
+	if findings := c1InjectionFraming("synthetic-phase", text, 1); len(findings) != 0 {
+		t.Fatalf("c1InjectionFraming(framed) = %d findings, want 0: %+v", len(findings), findings)
+	}
+
+	t.Run("injection-marker-stripped", func(t *testing.T) {
+		mutated := mustMutate(t, text, "injects", "handles")
+		findings := c1InjectionFraming("synthetic-phase", mutated, 1)
+		if len(findings) != 1 {
+			t.Fatalf("c1InjectionFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
+		}
+		if !strings.Contains(findings[0].Why, "no injection-framing marker") {
+			t.Fatalf("finding.Why = %q, want it to name the missing injection marker", findings[0].Why)
+		}
+	})
+
+	t.Run("resolution-marker-stripped", func(t *testing.T) {
+		mutated := mustMutate(t, text, "dispatcher resolved", "already knows about")
+		findings := c1InjectionFraming("synthetic-phase", mutated, 1)
+		if len(findings) != 1 {
+			t.Fatalf("c1InjectionFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
+		}
+		if !strings.Contains(findings[0].Why, "no resolution marker") {
+			t.Fatalf("finding.Why = %q, want it to name the missing resolution marker", findings[0].Why)
+		}
+	})
 }
 
 // TestC4FlagsForwardClauseRelocatedToArtifactStore pins defect 2's relocation
