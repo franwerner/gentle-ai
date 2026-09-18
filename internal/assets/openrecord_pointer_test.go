@@ -104,14 +104,26 @@ func TestOpenRecordSharedAssetsCarveOutIsDelimitedAndLiteral(t *testing.T) {
 				t.Fatalf("Read() error = %v", err)
 			}
 			_, inside, _ := splitOpenRecordBlock(t, content)
-			insideWords := normalizedWords(inside)
-			for _, sentence := range tc.requiredSentences {
-				if !strings.Contains(insideWords, normalizedWords(sentence)) {
-					t.Fatalf("%s openrecord block missing required sentence (word-normalized match failed): %q", tc.path, sentence)
-				}
+			for _, sentence := range missingCarveOutSentences(inside, tc.requiredSentences) {
+				t.Fatalf("%s openrecord block missing required sentence (word-normalized match failed): %q", tc.path, sentence)
 			}
 		})
 	}
+}
+
+// missingCarveOutSentences returns, in declaration order, every sentence in
+// required that is absent from inside (the text between the
+// <--:openrecord--> pair), matched word-normalized via normalizedWords. An
+// empty slice means every pin is satisfied.
+func missingCarveOutSentences(inside string, required []string) []string {
+	insideWords := normalizedWords(inside)
+	var missing []string
+	for _, sentence := range required {
+		if !strings.Contains(insideWords, normalizedWords(sentence)) {
+			missing = append(missing, sentence)
+		}
+	}
+	return missing
 }
 
 // TestOpenRecordNonSDDEnumUnchangedOutsideBlock pins the spec's "Outside
