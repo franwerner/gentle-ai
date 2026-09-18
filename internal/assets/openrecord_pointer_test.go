@@ -55,23 +55,45 @@ func TestOpenRecordConventionFileIsDelimited(t *testing.T) {
 	assertDelimiterPaired(t, content)
 }
 
+// Exact sentences pinned inside the two shared assets' <--:openrecord-->
+// blocks. Checking literal-substring presence of short tokens
+// (recordStore.resolved, openrecord, type: architecture) would let a
+// garbled rewrite that still contains those tokens pass; these are the
+// precise conditional sentences the spec scenarios depend on, matched
+// word-for-word via normalizedWords (case/punctuation/line-wrap
+// insensitive, word-order sensitive — a dropped "not" or a swapped verb
+// still fails).
+const (
+	// persistenceEnumDropSentence covers the spec scenario "Under
+	// openrecord, decision is not an offered save type".
+	persistenceEnumDropSentence = "When `recordStore.resolved: openrecord`, the `mem_save` instruction above is conditional: `decision` drops from the `type: \"{decision|bugfix|discovery|pattern}\"` enum at line 121."
+
+	// engramArtifactsUnaffectedSentence covers the spec scenario "A phase
+	// artifact save is unaffected under openrecord".
+	engramArtifactsUnaffectedSentence = "SDD phase artifacts — every phase from `explore` through `archive-report` — MUST keep saving to Engram with `type: architecture` in every `recordStore.resolved` mode, `openrecord` included."
+
+	// engramHumanDecisionSentence covers the spec scenario "A human
+	// decision is not written to Engram under openrecord".
+	engramHumanDecisionSentence = "The human architecture- or design-decision sense of that same `type: architecture` MUST NOT be written to Engram when `recordStore.resolved` is `openrecord` — that decision belongs to the record store instead."
+)
+
 // TestOpenRecordSharedAssetsCarveOutIsDelimitedAndLiteral pins the
 // record-store carve-out blocks added to the two shared SDD persistence
-// assets: the <--:openrecord--> pair is balanced in each, and each carries
-// its required literal — recordStore.resolved plus openrecord on both,
-// type: architecture on engram-convention.md.
+// assets: the <--:openrecord--> pair is balanced in each, and the block's
+// prose carries its precise conditional sentence(s) — not merely the short
+// literals a sentence happens to contain.
 func TestOpenRecordSharedAssetsCarveOutIsDelimitedAndLiteral(t *testing.T) {
 	cases := []struct {
-		path             string
-		requiredLiterals []string
+		path              string
+		requiredSentences []string
 	}{
 		{
-			path:             "skills/_shared/persistence-contract.md",
-			requiredLiterals: []string{"recordStore.resolved", "openrecord"},
+			path:              "skills/_shared/persistence-contract.md",
+			requiredSentences: []string{persistenceEnumDropSentence},
 		},
 		{
-			path:             "skills/_shared/engram-convention.md",
-			requiredLiterals: []string{"recordStore.resolved", "openrecord", "type: architecture"},
+			path:              "skills/_shared/engram-convention.md",
+			requiredSentences: []string{engramArtifactsUnaffectedSentence, engramHumanDecisionSentence},
 		},
 	}
 
@@ -81,13 +103,48 @@ func TestOpenRecordSharedAssetsCarveOutIsDelimitedAndLiteral(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Read() error = %v", err)
 			}
-			assertDelimiterPaired(t, content)
-			for _, literal := range tc.requiredLiterals {
-				if !strings.Contains(content, literal) {
-					t.Fatalf("%s missing required literal %q", tc.path, literal)
+			_, inside, _ := splitOpenRecordBlock(t, content)
+			insideWords := normalizedWords(inside)
+			for _, sentence := range tc.requiredSentences {
+				if !strings.Contains(insideWords, normalizedWords(sentence)) {
+					t.Fatalf("%s openrecord block missing required sentence (word-normalized match failed): %q", tc.path, sentence)
 				}
 			}
 		})
+	}
+}
+
+// TestOpenRecordNonSDDEnumUnchangedOutsideBlock pins the spec's "Outside
+// openrecord, the enum is unchanged" scenario: the Non-SDD type: enum in
+// persistence-contract.md, read OUTSIDE the <--:openrecord--> block, MUST
+// stay byte-identical to what shipped before this change — decision,
+// bugfix, discovery and pattern all still offered, exactly once, and never
+// folded into the conditional block.
+func TestOpenRecordNonSDDEnumUnchangedOutsideBlock(t *testing.T) {
+	// Trailing comma disambiguates this from the block's own prose
+	// reference to the same enum ("...the `type: \"{decision|bugfix|
+	// discovery|pattern}\"` enum at line 121."), which has no comma.
+	const enumLiteral = `type: "{decision|bugfix|discovery|pattern}",`
+
+	content, err := Read("skills/_shared/persistence-contract.md")
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+
+	before, inside, after := splitOpenRecordBlock(t, content)
+	outside := before + after
+
+	if count := strings.Count(outside, enumLiteral); count != 1 {
+		t.Fatalf("Non-SDD type: enum literal %q appears %d times outside the openrecord block, want exactly 1", enumLiteral, count)
+	}
+	if strings.Contains(inside, enumLiteral) {
+		t.Fatal("Non-SDD type: enum literal appears inside the openrecord block; the unconditional enum above must not be folded into the conditional prose")
+	}
+
+	for _, value := range []string{"decision", "bugfix", "discovery", "pattern"} {
+		if !strings.Contains(enumLiteral, value) {
+			t.Fatalf("Non-SDD type: enum literal %q is missing %q", enumLiteral, value)
+		}
 	}
 }
 
@@ -104,4 +161,22 @@ func assertDelimiterPaired(t *testing.T, content string) {
 	if strings.Index(content, openRecordDelimOpen) > strings.LastIndex(content, openRecordDelimClose) {
 		t.Fatal("openrecord close delimiter appears before its open delimiter")
 	}
+}
+
+// splitOpenRecordBlock locates the single <--:openrecord--> /
+// <--:/openrecord--> pair in content and splits it into the prose before
+// the block, the prose inside it (delimiters excluded), and the prose
+// after it — the shape both shared assets carry, exactly one balanced
+// pair each.
+func splitOpenRecordBlock(t *testing.T, content string) (before, inside, after string) {
+	t.Helper()
+	assertDelimiterPaired(t, content)
+
+	openIdx := strings.Index(content, openRecordDelimOpen)
+	closeIdx := strings.Index(content, openRecordDelimClose)
+
+	before = content[:openIdx]
+	inside = content[openIdx+len(openRecordDelimOpen) : closeIdx]
+	after = content[closeIdx+len(openRecordDelimClose):]
+	return before, inside, after
 }
