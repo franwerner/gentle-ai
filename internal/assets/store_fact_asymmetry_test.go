@@ -515,6 +515,19 @@ func reportFindings(t *testing.T, findings []finding) {
 	}
 }
 
+// mustMutate returns src with the first occurrence of old replaced by new,
+// and fails the test when the replacement changed nothing — a no-op mutation
+// means the fixture's needle has drifted out of the source it was written
+// against, and an unchanged input would pass every assertion below it.
+func mustMutate(t *testing.T, src, old, new string) string {
+	t.Helper()
+	mutated := strings.Replace(src, old, new, 1)
+	if mutated == src {
+		t.Fatalf("mustMutate: needle %q not found in source: %q", old, truncateRunes(src, 200))
+	}
+	return mutated
+}
+
 // loadedSurface is the segmented, ready-to-check form of one surfaceRegistry
 // row, computed once per test run.
 type loadedSurface struct {
