@@ -193,6 +193,14 @@ Update `tasks.md` — change `- [ ]` to `- [x]` for completed tasks:
 - [ ] 1.3 Add auth routes to `internal/server/server.go`  ← still pending
 ```
 
+<--:openrecord-->
+#### Step 5a: Materialize Design Decisions
+
+When status reports `recordStore.resolved: openrecord` AND this batch leaves no pending task in the tasks artifact, write each `## Architecture Decisions` entry from the design artifact into the record store before you return. The shared record-store convention — the one the Execution and Persistence Contract above already sends you to — fixes all four things this needs: how a design decision's fields map onto a record, how the record's path is derived, the authorship test binding the body sections no design field feeds, and what to do when the declared store is not on disk. Open it there and follow it; do not reconstruct any of it here.
+
+When the batch still leaves pending tasks, write nothing and report nothing — a later batch owns the write.
+<--:/openrecord-->
+
 ### Step 6: Persist Progress
 
 **This step is MANDATORY — do NOT skip it.**
