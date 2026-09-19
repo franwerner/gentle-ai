@@ -53,9 +53,23 @@ entirely.
 
 `## Writing records — apply is the sole writer` MUST survive carrying, in this order: (1) the
 sole-writer paragraph, (2) a redirect naming `skills/openrecord-capture/SKILL.md`, (3) the
-file-editing-ban paragraph, (4) the `sdd-verify` / `body-hash-mismatch` paragraph. The heading and
-blocks 1, 3 and 4 MUST be byte-for-byte identical to the pre-change file. Only the two usage bullets
-(L183-188) MUST be deleted.
+gentle-ai-owned materialization guidance, (4) the file-editing-ban paragraph, (5) the `sdd-verify` /
+`body-hash-mismatch` paragraph. The heading and blocks 1, 4 and 5 MUST be byte-for-byte identical to
+the pre-change file. The two usage bullets (L183-188 of the file before the delegation change) MUST
+remain deleted.
+
+The split is three-way, not two. (a) **openrecord command shapes go** — they are named only by the
+redirect. (b) **The local guarantees stay** — the file-editing ban and the `body-hash-mismatch` duty,
+which no emitted skill carries. (c) **gentle-ai-owned mapping knowledge stays local** — guidance whose
+left-hand side is a gentle-ai asset that openrecord has never heard of, and which therefore has no
+upstream to drift from. The classification test MUST be decidable per passage: content whose left-hand
+side is a gentle-ai asset lives in the convention; content whose left-hand side is an openrecord
+command lives in the emitted skill. Block (3) MUST contain no openrecord flag name and no command
+invocation, so category (c) cannot re-copy what category (a) removed.
+
+(Previously: the section carried four blocks and the split was stated as two-way — command shapes out,
+local guarantees in — with no category for gentle-ai-owned mapping knowledge and no test for
+classifying a passage.)
 
 #### Scenario: The three kept blocks survive byte-for-byte
 
@@ -76,7 +90,7 @@ blocks 1, 3 and 4 MUST be byte-for-byte identical to the pre-change file. Only t
 - GIVEN the ban paragraph opens by referring to "the `record write` / `record edit` path"
 - WHEN the post-change section is read top to bottom
 - THEN the redirect MUST appear after the sole-writer paragraph and before the ban paragraph
-- AND the ban paragraph's reference MUST therefore have a named documentation source already in view
+- AND the materialization guidance MUST sit after the redirect and before the ban paragraph, so the ban paragraph's reference still has a named documentation source already in view
 
 #### Scenario: The bare verb names legitimately survive inside the kept paragraphs
 
@@ -97,6 +111,20 @@ blocks 1, 3 and 4 MUST be byte-for-byte identical to the pre-change file. Only t
 - GIVEN the preamble declares the skill-less-agent degradation once for the whole file
 - WHEN the write-section redirect is read
 - THEN it MUST NOT restate that degradation
+
+#### Scenario: A passage is classified by its left-hand side
+
+- GIVEN a candidate passage for this section
+- WHEN it is classified under the three-way split
+- THEN a passage whose left-hand side is a gentle-ai asset — the design artifact's `## Architecture Decisions` template — MUST stay in the convention
+- AND a passage whose left-hand side is an openrecord command MUST be left to the emitted skill
+
+#### Scenario: The local mapping block carries no command shape
+
+- GIVEN block (3), the gentle-ai-owned materialization guidance
+- WHEN it is searched for openrecord flag forms and command invocations
+- THEN none MUST appear, so the block cannot reopen the drift the command shapes were removed to close
+- AND the redirect at block (2) MUST remain the only passage in the section that names a flag form
 
 ### Requirement: The preamble declares the dependency and the degradation
 
