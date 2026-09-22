@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
@@ -56,14 +55,6 @@ func Install(homeDir string, selectedAgents []model.AgentID, runner communitytoo
 	}
 
 	return EmitAndFanOut(homeDir, selectedAgents, runner)
-}
-
-// Sync is the inject-only half of Install: re-emit the skills and fan them out
-// again, never installing the binary and never running qmd setup. It holds the
-// same install/sync split ComponentEngram does — a sync refreshes managed
-// files, it does not provision the machine.
-func Sync(homeDir string, selectedAgents []model.AgentID, runner communitytool.Runner) (InstallResult, error) {
-	return SyncWithDetector(homeDir, selectedAgents, runner, communitytool.DetectorFunc(exec.LookPath))
 }
 
 // ErrBinaryUnavailable reports that the openrecord binary is not on PATH.
