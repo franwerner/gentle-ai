@@ -26,6 +26,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/gga"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/mcp"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/opencodeplugin"
+	"github.com/gentleman-programming/gentle-ai/v2/internal/components/openrecord"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/permissions"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/persona"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/sdd"
@@ -1090,6 +1091,10 @@ func (s componentSyncStep) Run() error {
 		// does not neutralize it, and every test that is about sync rather than
 		// about openrecord still reaches for the machine.
 		result, err := syncOpenRecordWithHome(s.homeDir, s.agents, communitytool.RunnerFunc(runCommand), communitytool.DetectorFunc(cmdLookPath))
+		if errors.Is(err, openrecord.ErrBinaryUnavailable) {
+			fmt.Fprintln(os.Stderr, "WARNING: openrecord is not installed — its skills were not refreshed. Run `gentle-ai install` to install it.")
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("sync openrecord: %w", err)
 		}

@@ -66,6 +66,17 @@ func Sync(homeDir string, selectedAgents []model.AgentID, runner communitytool.R
 	return SyncWithDetector(homeDir, selectedAgents, runner, communitytool.DetectorFunc(exec.LookPath))
 }
 
+// ErrBinaryUnavailable reports that the openrecord binary is not on PATH.
+//
+// Sync degrades on it rather than failing, the way the engram arm does: engram
+// never shells out at all, because gentle-ai embeds its protocol asset, and it
+// ignores a version lookup that fails. openrecord's skills are produced by the
+// openrecord binary and deliberately not embedded — a private copy would drift
+// from the tool in silence — so a sync without the binary has nothing to copy.
+// Refreshing what it can is sync's job; reporting a broken install is the
+// doctor's, and it already lists openrecord in coreTools.
+var ErrBinaryUnavailable = errors.New("the openrecord binary is not installed")
+
 // SyncWithDetector is Sync with the binary lookup injected. The availability
 // probe lives here rather than in the caller so that substituting this arm
 // substitutes the whole of it: a probe sitting in front of the seam leaves
@@ -80,7 +91,7 @@ func SyncWithDetector(homeDir string, selectedAgents []model.AgentID, runner com
 		return InstallResult{}, fmt.Errorf("openrecord runner is not configured")
 	}
 	if DetectStatus(homeDir, detector, runner).CLI != communitytool.AvailabilityAvailable {
-		return InstallResult{}, errors.New("the openrecord binary is not installed, so its skills cannot be refreshed; run `gentle-ai install` to install it")
+		return InstallResult{}, ErrBinaryUnavailable
 	}
 	return EmitAndFanOut(homeDir, selectedAgents, runner)
 }

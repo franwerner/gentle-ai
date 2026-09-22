@@ -254,13 +254,13 @@ func TestNormalizeComponentsAcceptsOpenRecord(t *testing.T) {
 	}
 }
 
-// TestComponentSyncStepOpenRecordFailsWhenBinaryMissing pins that sync and the
-// doctor give one verdict, not two. openrecord is in coreTools, so the doctor
-// FAILs without the binary; sync used to warn and continue, which left a user
-// on one machine told their install was broken and fine at the same time.
-// Sync provisions nothing, so no binary here means `gentle-ai install` never
-// ran or did not finish — and the error must name that command.
-func TestComponentSyncStepOpenRecordFailsWhenBinaryMissing(t *testing.T) {
+// TestComponentSyncStepOpenRecordDegradesWhenBinaryMissing pins that sync
+// refreshes what it can instead of failing, the way the engram arm does.
+// gentle-ai embeds engram's protocol asset, so that arm never shells out;
+// openrecord's skills are produced by the openrecord binary and deliberately
+// not embedded, so without it there is simply nothing to copy. Reporting a
+// broken install is the doctor's job, and openrecord is in its coreTools.
+func TestComponentSyncStepOpenRecordDegradesWhenBinaryMissing(t *testing.T) {
 	home := t.TempDir()
 	calls := stageOpenRecordEmit(t, false)
 
@@ -269,12 +269,8 @@ func TestComponentSyncStepOpenRecordFailsWhenBinaryMissing(t *testing.T) {
 		homeDir:   home,
 		agents:    []model.AgentID{model.AgentClaudeCode},
 	}
-	err := step.Run()
-	if err == nil {
-		t.Fatalf("Run() error = nil, want a failure — a missing binary must not pass silently")
-	}
-	if !strings.Contains(err.Error(), "gentle-ai install") {
-		t.Errorf("Run() error = %q, want it to name the command that fixes it", err)
+	if err := step.Run(); err != nil {
+		t.Fatalf("Run() error = %v, want the sync to degrade rather than fail", err)
 	}
 	if ranCommand(*calls, "openrecord", "skills", "--emit") {
 		t.Fatalf("sync emitted skills despite the binary being absent: %v", *calls)
