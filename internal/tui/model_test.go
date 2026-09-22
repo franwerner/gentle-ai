@@ -804,7 +804,8 @@ func TestPiCombinedWithOtherAgentsTUIInstallKeepsAllAgentsInPlan(t *testing.T) {
 		t.Fatalf("dependency agents = %v, want %v", state.DependencyPlan.Agents, wantAgents)
 	}
 	// Minimal preset + Gentleman persona now includes ComponentPersona (persona is the source of truth).
-	wantComponents := []model.ComponentID{model.ComponentPersona, model.ComponentEngram}
+	// openrecord ships in every non-custom preset, so minimal carries it too.
+	wantComponents := []model.ComponentID{model.ComponentPersona, model.ComponentEngram, model.ComponentOpenRecord}
 	if !reflect.DeepEqual(state.DependencyPlan.OrderedComponents, wantComponents) {
 		t.Fatalf("dependency components = %v, want %v", state.DependencyPlan.OrderedComponents, wantComponents)
 	}
@@ -2227,48 +2228,6 @@ func TestCommunityToolsToggleSelectsCodeGraph(t *testing.T) {
 
 	if !state.Selection.HasCommunityTool(model.CommunityToolCodeGraph) {
 		t.Fatalf("expected CodeGraph selected, got %v", state.Selection.CommunityTools)
-	}
-}
-
-func TestCommunityToolsToggleSelectsOpenRecord(t *testing.T) {
-	m := NewModel(system.DetectionResult{}, "dev")
-	m.Screen = ScreenCommunityTools
-	// Each community tool occupies two rows (the row itself, then its repo
-	// line); openrecord is the second Definition, so its row is at index 2.
-	m.Cursor = 2
-
-	updated, _ := m.handleKeyPress(tea.KeyMsg{Type: tea.KeySpace})
-	state := updated.(Model)
-
-	if !state.Selection.HasCommunityTool(model.CommunityToolOpenRecord) {
-		t.Fatalf("expected openrecord selected, got %v", state.Selection.CommunityTools)
-	}
-}
-
-func TestCommunityToolStatusDetectionCarriesOpenRecord(t *testing.T) {
-	originalStatus := openRecordStatusFn
-	t.Cleanup(func() { openRecordStatusFn = originalStatus })
-
-	var sawOpenRecord bool
-	openRecordStatusFn = func(homeDir string, detector communitytool.Detector, runner communitytool.Runner) communitytool.Status {
-		sawOpenRecord = true
-		return communitytool.Status{Tool: model.CommunityToolOpenRecord, CLI: communitytool.AvailabilityMissing}
-	}
-
-	m := NewModel(system.DetectionResult{}, "dev")
-	msg := m.startCommunityToolStatusDetection()().(CommunityToolStatusLoadedMsg)
-
-	if !sawOpenRecord {
-		t.Fatal("status detection did not consult openRecordStatusFn")
-	}
-	var found bool
-	for _, status := range msg.Statuses {
-		if status.Tool == model.CommunityToolOpenRecord {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("status detection message did not carry an openrecord status: %+v", msg.Statuses)
 	}
 }
 

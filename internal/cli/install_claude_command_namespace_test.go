@@ -54,6 +54,11 @@ func TestRunInstallClaudeCommandsNeverShareASkillName(t *testing.T) {
 
 func TestRunSyncRetiresUnprefixedClaudeCommands(t *testing.T) {
 	home := installTestHome(t)
+	// installTestHome simulates a machine with no binaries on PATH, which now
+	// fails the sync's openrecord step. This test is about retiring unprefixed
+	// claude commands, not about openrecord, so neutralize its arms — after
+	// installTestHome, which overwrites the same two seams.
+	stubOpenRecordArms(t)
 	restoreBackupHome := backup.UserHomeDirFn
 	backup.UserHomeDirFn = func() (string, error) { return home, nil }
 	t.Cleanup(func() { backup.UserHomeDirFn = restoreBackupHome })

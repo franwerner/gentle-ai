@@ -20,14 +20,15 @@ func ComponentsForPreset(preset PresetID, persona PersonaID) []ComponentID {
 	var components []ComponentID
 	switch preset {
 	case PresetMinimal:
-		components = []ComponentID{ComponentEngram}
+		components = []ComponentID{ComponentEngram, ComponentOpenRecord}
 	case PresetEcosystemOnly:
-		components = []ComponentID{ComponentEngram, ComponentSDD, ComponentSkills, ComponentContext7, ComponentGGA}
+		components = []ComponentID{ComponentEngram, ComponentOpenRecord, ComponentSDD, ComponentSkills, ComponentContext7, ComponentGGA}
 	case PresetCustom:
 		return nil
 	default: // full-gentleman
 		components = []ComponentID{
 			ComponentEngram,
+			ComponentOpenRecord,
 			ComponentSDD,
 			ComponentSkills,
 			ComponentContext7,

@@ -919,3 +919,32 @@ func TestUVInstallHint(t *testing.T) {
 		})
 	}
 }
+
+// TestResolveComponentInstallOpenRecordNamesItsOwner pins the decision to
+// leave openrecord's install where it is rather than move it behind this
+// resolver. openrecord publishes no package-manager artifact, so its install
+// is not a function of the PlatformProfile this resolver keys on: it is `go
+// install` when Go is on PATH and its own install.sh otherwise, chosen through
+// the injected communitytool.Detector the component threads through install,
+// sync and PostUpgrade — and that predicate has to agree with
+// internal/update/upgrade's effectiveMethod, which this package knows nothing
+// about. The resolver therefore names the owner rather than returning the
+// generic "not supported" a caller could mistake for an oversight.
+func TestResolveComponentInstallOpenRecordNamesItsOwner(t *testing.T) {
+	for _, profile := range []system.PlatformProfile{
+		{OS: "darwin", PackageManager: "brew"},
+		{OS: "linux", LinuxDistro: system.LinuxDistroUbuntu, PackageManager: "apt"},
+		{OS: "windows", PackageManager: "winget"},
+	} {
+		commands, err := NewResolver().ResolveComponentInstall(profile, model.ComponentOpenRecord)
+		if err == nil {
+			t.Fatalf("ResolveComponentInstall(openrecord) on %q returned %v, want an error", profile.OS, commands)
+		}
+		if commands != nil {
+			t.Errorf("ResolveComponentInstall(openrecord) returned %v alongside its error, want nil", commands)
+		}
+		if !strings.Contains(err.Error(), "openrecord.Install()") {
+			t.Errorf("error %q does not name the owner of openrecord's install", err)
+		}
+	}
+}

@@ -209,6 +209,20 @@ func (profileResolver) ResolveComponentInstall(profile system.PlatformProfile, c
 		return resolveEngramInstall(profile)
 	case model.ComponentGGA:
 		return resolveGGAInstall(profile)
+	case model.ComponentOpenRecord:
+		// openrecord publishes no package-manager artifact, so its install is
+		// not a function of the platform profile this resolver keys on: it is
+		// `go install` when Go is on PATH and its own install.sh otherwise.
+		// That predicate has to agree with internal/update/upgrade's
+		// effectiveMethod, which this package knows nothing about, and it is
+		// resolved through the injected communitytool.Detector the component
+		// threads through install, sync and PostUpgrade alike. Point the caller
+		// at the owner instead of duplicating a half of it here — the same
+		// shape resolveEngramInstall's own unsupported arm takes.
+		return nil, fmt.Errorf(
+			"openrecord installs via `go install` or its own script, not a package manager — use openrecord.Install() instead of CommandSequence (os=%q, package manager=%q)",
+			profile.OS, profile.PackageManager,
+		)
 	default:
 		return nil, fmt.Errorf("install command is not supported for component %q", component)
 	}

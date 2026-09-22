@@ -88,6 +88,7 @@ type ComponentID string
 
 const (
 	ComponentEngram             ComponentID = "engram"
+	ComponentOpenRecord         ComponentID = "openrecord"
 	ComponentSDD                ComponentID = "sdd"
 	ComponentSkills             ComponentID = "skills"
 	ComponentContext7           ComponentID = "context7"
@@ -237,8 +238,7 @@ const (
 type CommunityToolID string
 
 const (
-	CommunityToolCodeGraph  CommunityToolID = "codegraph"
-	CommunityToolOpenRecord CommunityToolID = "openrecord"
+	CommunityToolCodeGraph CommunityToolID = "codegraph"
 )
 
 // Profile represents a named SDD orchestrator configuration with model assignments.

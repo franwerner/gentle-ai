@@ -4,6 +4,8 @@ Toggle components with enter or space.
 
 ▸ [ ] engram
     Persistent cross-session memory
+  [ ] openrecord
+    Durable decision and spec records, with qmd semantic search
   [ ] sdd
     Spec-driven development workflow
   [ ] skills

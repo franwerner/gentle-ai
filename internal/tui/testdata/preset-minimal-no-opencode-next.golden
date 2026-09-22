@@ -5,6 +5,8 @@ Components to install
      Managed agent behavior and conversation tone
   2. engram included
      Persistent cross-session memory
+  3. openrecord included
+     Durable decision and spec records, with qmd semantic search
 
 ▸ Continue
   Back

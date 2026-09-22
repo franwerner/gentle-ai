@@ -74,6 +74,7 @@ func TestNormalizeInstallFlagsDefaults(t *testing.T) {
 		Preset:  model.PresetFullGentleman,
 		Components: []model.ComponentID{
 			model.ComponentEngram,
+			model.ComponentOpenRecord,
 			model.ComponentSDD,
 			model.ComponentSkills,
 			model.ComponentContext7,
@@ -209,7 +210,11 @@ func TestNormalizeInstallFlagsPiOnlyRespectsExplicitPreset(t *testing.T) {
 
 	// Pi + explicit minimal preset with default gentleman persona now includes ComponentPersona.
 	// Persona is persona-screen-driven; preset only controls the ecosystem stack.
-	want := []model.ComponentID{model.ComponentEngram, model.ComponentPersona}
+	// openrecord rides along with every non-custom preset, Pi included — Pi
+	// exposes no skills directory, so the fan-out is a no-op there, but the
+	// preset is agent-blind by design. Only the no-preset Pi-only shortcut
+	// (piOnlyComponents) stays engram+persona.
+	want := []model.ComponentID{model.ComponentEngram, model.ComponentOpenRecord, model.ComponentPersona}
 	if !reflect.DeepEqual(input.Selection.Components, want) {
 		t.Fatalf("components = %#v, want %#v", input.Selection.Components, want)
 	}

@@ -1493,6 +1493,7 @@ func TestRunSyncRefreshesPersistedVisualComponents(t *testing.T) {
 		t.Fatalf("EvalSymlinks(workspace) error = %v", err)
 	}
 	t.Chdir(workspace)
+	stubOpenRecordArms(t)
 	home, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatalf("EvalSymlinks(home) error = %v", err)
@@ -1563,6 +1564,7 @@ func TestRunSyncRefreshesPersistedVisualComponents(t *testing.T) {
 // must refresh them to the embedded assets of the running binary.
 func TestRunSyncRefreshesInstalledOpenCodeReviewPluginWithoutSDDComponent(t *testing.T) {
 	home := t.TempDir()
+	stubOpenRecordArms(t)
 	if err := state.Write(home, state.InstallState{
 		InstalledAgents:     []string{"opencode"},
 		SelectionConfigured: true,
@@ -1620,6 +1622,7 @@ func TestRunSyncRefreshesInstalledOpenCodeReviewPluginWithoutSDDComponent(t *tes
 // OpenCode review interception plugin cannot keep affecting Kilo after sync.
 func TestRunSyncRemovesOpenCodeOnlyReviewPluginFromKilocode(t *testing.T) {
 	home := t.TempDir()
+	stubOpenRecordArms(t)
 	if err := state.Write(home, state.InstallState{
 		InstalledAgents:     []string{"kilocode"},
 		SelectionConfigured: true,
@@ -1666,6 +1669,7 @@ func TestRunSyncRemovesOpenCodeOnlyReviewPluginFromKilocode(t *testing.T) {
 // plugins installed must not receive them from a plain sync.
 func TestRunSyncDoesNotCreateOpenCodeReviewPluginWhenNeverInstalled(t *testing.T) {
 	home := t.TempDir()
+	stubOpenRecordArms(t)
 	if err := state.Write(home, state.InstallState{
 		InstalledAgents:     []string{"opencode"},
 		SelectionConfigured: true,

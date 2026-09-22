@@ -100,13 +100,6 @@ var definitions = []Definition{
 		RepoURL:     "https://github.com/colbymchenry/codegraph",
 		Description: "Code graph indexing and MCP wiring for supported coding agents",
 	},
-	{
-		ID:          model.CommunityToolOpenRecord,
-		Name:        "openrecord",
-		CommandName: "openrecord",
-		RepoURL:     "https://github.com/franwerner/open-record",
-		Description: "Durable decision and spec records for the SDD flow, with qmd semantic search",
-	},
 }
 
 func Definitions() []Definition {
@@ -132,12 +125,10 @@ func InstallWithHome(id model.CommunityToolID, workspaceDir string, homeDir stri
 	if runner == nil {
 		return Result{}, fmt.Errorf("community tool runner is not configured")
 	}
-	def, ok := DefinitionFor(id)
-	if !ok {
+	// CodeGraph is the only registered definition, so DefinitionFor is the
+	// whole guard: an unknown id never reaches the CodeGraph install body.
+	if _, ok := DefinitionFor(id); !ok {
 		return Result{}, fmt.Errorf("unknown community tool %q", id)
-	}
-	if def.ID != model.CommunityToolCodeGraph {
-		return Result{}, fmt.Errorf("community tool %q is not supported", id)
 	}
 
 	result := Result{Tool: id}

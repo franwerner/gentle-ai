@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gentleman-programming/gentle-ai/v2/internal/catalog"
 )
 
 // TestBuildEventNeverLeaksIdentifyingData builds an event from a fixture
@@ -96,5 +98,77 @@ func TestBuildHeartbeatEventCarriesCountersEvenWhenZero(t *testing.T) {
 	}
 	if !strings.Contains(string(payload), `"counters"`) {
 		t.Fatalf("heartbeat event must always carry counters: %s", payload)
+	}
+}
+
+// componentEnumFromSchema reads a telemetry event schema and returns its
+// closed `components` enum.
+func componentEnumFromSchema(t *testing.T, path string) []string {
+	t.Helper()
+	payload, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Properties struct {
+			Components struct {
+				Items struct {
+					Enum []string `json:"enum"`
+				} `json:"items"`
+				MaxItems *int `json:"maxItems"`
+			} `json:"components"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(payload, &doc); err != nil {
+		t.Fatal(err)
+	}
+	enum := doc.Properties.Components.Items.Enum
+	if len(enum) == 0 {
+		t.Fatalf("%s: no components enum", path)
+	}
+	if max := doc.Properties.Components.MaxItems; max != nil && *max < len(enum) {
+		t.Fatalf("%s: components maxItems = %d, below the %d values its enum allows", path, *max, len(enum))
+	}
+	return enum
+}
+
+// TestComponentAllowListsAgreeWithCatalog pins the three closed lists a
+// component must appear in — knownComponents here, the collector's embedded
+// schema, and the published contract copy — against catalog.MVPComponents().
+// A component added to the catalog and forgotten in any of them is either
+// silently stripped from every event (filterKnown) or gets the whole event
+// rejected by the collector, and nothing else fails.
+func TestComponentAllowListsAgreeWithCatalog(t *testing.T) {
+	want := make(map[string]bool)
+	for _, component := range catalog.MVPComponents() {
+		want[string(component.ID)] = true
+	}
+
+	lists := map[string][]string{
+		"../telemetrycollector/schema/event.schema.json":         componentEnumFromSchema(t, filepath.Join("..", "telemetrycollector", "schema", "event.schema.json")),
+		"../../contracts/telemetry/v1/schemas/event.schema.json": componentEnumFromSchema(t, filepath.Join("..", "..", "contracts", "telemetry", "v1", "schemas", "event.schema.json")),
+	}
+	knownList := make([]string, 0, len(knownComponents))
+	for id := range knownComponents {
+		knownList = append(knownList, id)
+	}
+	lists["internal/telemetry.knownComponents"] = knownList
+
+	for name, got := range lists {
+		have := make(map[string]bool, len(got))
+		for _, id := range got {
+			if have[id] {
+				t.Fatalf("%s: duplicate component %q", name, id)
+			}
+			have[id] = true
+			if !want[id] {
+				t.Errorf("%s: has %q, which catalog.MVPComponents() does not", name, id)
+			}
+		}
+		for id := range want {
+			if !have[id] {
+				t.Errorf("%s: missing %q, which catalog.MVPComponents() declares", name, id)
+			}
+		}
 	}
 }

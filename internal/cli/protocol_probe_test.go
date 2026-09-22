@@ -73,6 +73,14 @@ func TestMain(m *testing.M) {
 		qwen.LookPathOverride = agentPresent
 		kilocode.LookPathOverride = agentPresent
 		openclaw.LookPathOverride = agentPresent
+		// The stand-in runs a real sync, and openrecord ships in every
+		// non-custom preset, so without this the child process would probe
+		// the machine for the openrecord binary and fan its skills out into
+		// the captured home -- the one thing a continuation test must not do
+		// to the home whose managed-asset digest it is about to re-read. The
+		// parent's own substitution cannot reach here: this is a separate
+		// process, so the stand-in has to neutralize the arms itself.
+		neutralizeOpenRecordArms()
 		// The same routing app.RunArgs performs for the sync subcommand
 		// (internal/app/app.go: cli.RunSync(args[1:]) -- it cannot be imported
 		// here without an import cycle): strip the verb, reject anything else,

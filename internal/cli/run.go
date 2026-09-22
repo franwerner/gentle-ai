@@ -74,9 +74,19 @@ var (
 	goEnv                        = defaultGoEnv
 	installCommunityTool         = communitytool.Install
 	installCommunityToolWithHome = communitytool.InstallWithHome
-	installOpenRecordWithHome    = openrecord.Install
-	injectSDD                    = sdd.Inject
-	pathEnvEntries               = func(profile system.PlatformProfile) []string {
+
+	// installOpenRecordWithHome and syncOpenRecordWithHome are the install and
+	// sync seams for the openrecord component. openrecord is the one component
+	// whose arms shell out to a third-party binary, and it now ships in every
+	// non-custom preset — so without a substitutable entry point every test
+	// that reaches an install or sync arm runs the real tool: emitting skills
+	// into its home on a machine that has openrecord, and going to the network
+	// for `go install` on one that does not.
+	installOpenRecordWithHome = openrecord.Install
+	syncOpenRecordWithHome    = openrecord.Sync
+
+	injectSDD      = sdd.Inject
+	pathEnvEntries = func(profile system.PlatformProfile) []string {
 		return splitPathForOS(os.Getenv("PATH"), profile.OS)
 	}
 	addUserPath          = system.AddToUserPath
@@ -676,6 +686,15 @@ type runtimeState struct {
 	engramVersionResolved bool
 	engramVersion         string
 	engramVersionErr      error
+
+	// openRecordResolved and openRecordFannedOut record componentApplyStep's
+	// ComponentOpenRecord outcome — how many selected agents actually received
+	// the fanned-out skills. A zero fan-out is not a failure (no selected agent
+	// exposes a skills directory), so it travels here and through a stderr
+	// warning rather than aborting the run, exactly like the engram arm's own
+	// non-fatal branch above.
+	openRecordResolved  bool
+	openRecordFannedOut int
 }
 
 func (s *runtimeState) cleanupRollbackSnapshot() {
@@ -1398,13 +1417,6 @@ type communityToolInstallStep struct {
 func (s communityToolInstallStep) ID() string { return s.id }
 
 func (s communityToolInstallStep) Run() error {
-	if s.tool == model.CommunityToolOpenRecord {
-		_, err := installOpenRecordWithHome(s.homeDir, s.agents, communitytool.RunnerFunc(runCommand), communitytool.DetectorFunc(cmdLookPath))
-		if err != nil {
-			return fmt.Errorf("install community tool %q: %w", s.tool, err)
-		}
-		return nil
-	}
 	result, err := installCommunityToolWithHome(s.tool, s.workspaceDir, s.homeDir, communitytool.RunnerFunc(runCommand), communitytool.DetectorFunc(cmdLookPath))
 	if err != nil {
 		return fmt.Errorf("install community tool %q: %w", s.tool, err)
@@ -1707,6 +1719,19 @@ func (s componentApplyStep) Run() error {
 			if err != nil {
 				return fmt.Errorf("inject engram for %q: %w", adapter.Agent(), err)
 			}
+		}
+		return nil
+	case model.ComponentOpenRecord:
+		result, err := installOpenRecordWithHome(s.homeDir, s.agents, communitytool.RunnerFunc(runCommand), communitytool.DetectorFunc(cmdLookPath))
+		if s.state != nil {
+			s.state.openRecordResolved = true
+			s.state.openRecordFannedOut = result.FannedOut
+		}
+		if err != nil {
+			return fmt.Errorf("install openrecord: %w", err)
+		}
+		if result.FannedOut == 0 {
+			fmt.Fprintln(os.Stderr, "WARNING: openrecord was installed, but no selected agent exposes a skills directory — its skills were not fanned out.")
 		}
 		return nil
 	case model.ComponentContext7:
@@ -2525,6 +2550,25 @@ func componentPathsWithWorkspaceScoped(homeDir, workspaceDir string, scope Insta
 						paths = append(paths, p)
 					}
 				}
+			}
+		case model.ComponentOpenRecord:
+			// The openrecord binary decides what it ships, so the only truthful
+			// path list is the one its own manifest records — UninstallTargets is
+			// exactly that plus the manifest file, the same set uninstall removes.
+			//
+			// homeDir, not targetDir: openrecord.Install/Sync are handed s.homeDir
+			// and the fan-out resolves adapter.SkillsDir(homeDir) itself, so this
+			// component is deliberately absent from componentPathDirScoped's
+			// scoped list. Asking the adapter for a workspace-scoped skills
+			// directory here would declare paths the writer never touches.
+			//
+			// Before the first fan-out there is no manifest and this contributes
+			// nothing: gentle-ai cannot enumerate files it has not seen emitted.
+			// Once one exists, backup captures the previous emit (content plus the
+			// ownership record pruneStaleEntries and UninstallTargets both read)
+			// and post-apply verification asserts the new one.
+			if skillDir := adapter.SkillsDir(homeDir); skillDir != "" {
+				paths = append(paths, openrecord.UninstallTargets(skillDir)...)
 			}
 		case model.ComponentPermission:
 			if p := permissions.TargetPath(homeDir, adapter); p != "" {

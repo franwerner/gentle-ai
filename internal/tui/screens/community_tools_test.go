@@ -17,9 +17,9 @@ func TestRenderCommunityToolsShowsCodeGraph(t *testing.T) {
 	}
 }
 
-func TestRenderCommunityToolsShowsOpenRecordUnchecked(t *testing.T) {
+func TestRenderCommunityToolsShowsUncheckedToolWhenUnselected(t *testing.T) {
 	out := RenderCommunityTools(nil, 0, nil, false, nil)
-	for _, want := range []string{"[ ] openrecord", "View repo: https://github.com/franwerner/open-record"} {
+	for _, want := range []string{"[ ] CodeGraph", "View repo: https://github.com/colbymchenry/codegraph"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("RenderCommunityTools missing %q; output:\n%s", want, out)
 		}

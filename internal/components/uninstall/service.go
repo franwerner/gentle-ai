@@ -94,6 +94,7 @@ var (
 	allManagedComponents = []model.ComponentID{
 		model.ComponentPersona,
 		model.ComponentEngram,
+		model.ComponentOpenRecord,
 		model.ComponentContext7,
 		model.ComponentPermission,
 		model.ComponentSDD,
@@ -106,6 +107,7 @@ var (
 	fullAgentRemovalComponents = []model.ComponentID{
 		model.ComponentPersona,
 		model.ComponentEngram,
+		model.ComponentOpenRecord,
 		model.ComponentContext7,
 		model.ComponentPermission,
 		model.ComponentSDD,
@@ -988,10 +990,6 @@ func (s *Service) componentOperations(adapter agents.Adapter, componentID model.
 				targets = append(targets, dirPath)
 				ops = append(ops, removeTree(dirPath))
 			}
-			for _, path := range openrecord.UninstallTargets(skillDir) {
-				targets = append(targets, path)
-				ops = append(ops, removeFile(path))
-			}
 			ops = append(ops, removeDirIfEmpty(skillDir))
 		}
 		if cap, ok := adapter.(workflowCapability); ok && cap.SupportsWorkflows() && s.workspaceDir != "" {
@@ -1025,6 +1023,18 @@ func (s *Service) componentOperations(adapter agents.Adapter, componentID model.
 				ops = append(ops, removeFile(path))
 			}
 			ops = append(ops, removeDirIfEmpty(agentsDir))
+		}
+	case model.ComponentOpenRecord:
+		// Manifest-driven: exactly what this agent's own fan-out wrote, never a
+		// hardcoded skill list. The openrecord binary itself is machine-global
+		// and stays — gentle-ai installed it, it does not own it.
+		if adapter.SupportsSkills() {
+			skillDir := adapter.SkillsDir(homeDir)
+			for _, path := range openrecord.UninstallTargets(skillDir) {
+				targets = append(targets, path)
+				ops = append(ops, removeFile(path))
+			}
+			ops = append(ops, removeDirIfEmpty(skillDir))
 		}
 	case model.ComponentGGA:
 		for _, path := range globalBackupTargets(homeDir) {

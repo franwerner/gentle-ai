@@ -59,9 +59,9 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["persona", "sdd", "engram", "context7", "gga", "skills", "permissions", "theme", "claude-theme", "opencode-gentle-logo"]
+        "enum": ["persona", "sdd", "engram", "context7", "gga", "skills", "permissions", "theme", "claude-theme", "opencode-gentle-logo", "openrecord"]
       },
-      "maxItems": 10
+      "maxItems": 11
     },
     "rdd_enabled": {
       "type": "boolean"

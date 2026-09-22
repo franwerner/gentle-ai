@@ -1,13 +1,11 @@
-// Package openrecord installs and detects openrecord as an opt-in gentle-ai
-// community tool: the binary, its qmd prerequisite, and the skill fan-out to
-// every selected agent. communitytool.Install stays CodeGraph-only; the three
-// call sites branch here instead of widening that switch.
+// Package openrecord installs and detects openrecord, gentle-ai's durable
+// record store component: the binary, its qmd prerequisite, and the skill
+// fan-out to every selected agent that exposes a skills directory.
 package openrecord
 
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
@@ -20,64 +18,75 @@ const goImportPath = "github.com/franwerner/openrecord/cmd/openrecord"
 // default branch: the script itself resolves the release to install.
 const installScriptURL = "https://raw.githubusercontent.com/franwerner/open-record/master/scripts/install.sh"
 
-// Install runs the ordered sequence behind the opt-in checkbox: install the
-// binary only when missing, install qmd unconditionally, emit skills with qmd
-// into a staging directory, then fan them out to every selected agent that
-// exposes a skills directory. A step does not run when the step before it
-// failed, so skills are never emitted describing a tool whose qmd half is
-// missing.
-func Install(homeDir string, selectedAgents []model.AgentID, runner communitytool.Runner, detector communitytool.Detector) (communitytool.Result, error) {
+// InstallResult reports the one non-fatal outcome an openrecord install or
+// sync can have: how many selected agents actually received the fanned-out
+// skills. Zero is not an error — it means no selected agent exposes a skills
+// directory — so the caller warns instead of failing the run.
+type InstallResult struct {
+	FannedOut int
+}
+
+// Install runs the ordered component sequence: install the binary only when
+// missing, install qmd unconditionally, emit skills with qmd into a staging
+// directory, then fan them out to every selected agent that exposes a skills
+// directory. A step does not run when the step before it failed, so skills are
+// never emitted describing a tool whose qmd half is missing.
+func Install(homeDir string, selectedAgents []model.AgentID, runner communitytool.Runner, detector communitytool.Detector) (InstallResult, error) {
 	if runner == nil {
-		return communitytool.Result{}, fmt.Errorf("openrecord runner is not configured")
+		return InstallResult{}, fmt.Errorf("openrecord runner is not configured")
 	}
 	if detector == nil {
 		detector = defaultDetector()
 	}
 
-	result := communitytool.Result{Tool: model.CommunityToolOpenRecord}
-	before := DetectStatus(homeDir, detector, runner)
-	result.StatusBefore = &before
-
-	if before.CLI != communitytool.AvailabilityAvailable {
+	if DetectStatus(homeDir, detector, runner).CLI != communitytool.AvailabilityAvailable {
 		command, err := binaryInstallCommand(detector)
 		if err != nil {
-			return result, err
+			return InstallResult{}, err
 		}
-		result.CommandsRun = append(result.CommandsRun, strings.Join(command, " "))
 		if err := runner.Run(command[0], command[1:]...); err != nil {
-			return result, fmt.Errorf("install openrecord binary: %w", err)
+			return InstallResult{}, fmt.Errorf("install openrecord binary: %w", err)
 		}
 	}
 
-	result.CommandsRun = append(result.CommandsRun, "openrecord qmd install")
 	if err := runner.Run("openrecord", "qmd", "install"); err != nil {
-		return result, fmt.Errorf("openrecord qmd install: %w", err)
+		return InstallResult{}, fmt.Errorf("openrecord qmd install: %w", err)
+	}
+
+	return EmitAndFanOut(homeDir, selectedAgents, runner)
+}
+
+// Sync is the inject-only half of Install: re-emit the skills and fan them out
+// again, never installing the binary and never running qmd setup. It holds the
+// same install/sync split ComponentEngram does — a sync refreshes managed
+// files, it does not provision the machine.
+func Sync(homeDir string, selectedAgents []model.AgentID, runner communitytool.Runner) (InstallResult, error) {
+	if runner == nil {
+		return InstallResult{}, fmt.Errorf("openrecord runner is not configured")
+	}
+	return EmitAndFanOut(homeDir, selectedAgents, runner)
+}
+
+// EmitAndFanOut is the step pair install, sync and post-upgrade all share:
+// `openrecord skills --emit <staging> --with-qmd` followed by the fan-out into
+// every selected agent's skills directory.
+func EmitAndFanOut(homeDir string, selectedAgents []model.AgentID, runner communitytool.Runner) (InstallResult, error) {
+	if runner == nil {
+		return InstallResult{}, fmt.Errorf("openrecord runner is not configured")
 	}
 
 	staging, err := os.MkdirTemp("", "gentle-ai-openrecord-emit-*")
 	if err != nil {
-		return result, fmt.Errorf("stage openrecord skills: %w", err)
+		return InstallResult{}, fmt.Errorf("stage openrecord skills: %w", err)
 	}
 	defer os.RemoveAll(staging)
 
-	result.CommandsRun = append(result.CommandsRun, fmt.Sprintf("openrecord skills --emit %s --with-qmd", staging))
 	if err := runner.Run("openrecord", "skills", "--emit", staging, "--with-qmd"); err != nil {
-		return result, fmt.Errorf("openrecord skills --emit: %w", err)
+		return InstallResult{}, fmt.Errorf("openrecord skills --emit: %w", err)
 	}
 
 	fanned, err := fanOut(staging, homeDir, selectedAgents)
-	if err != nil {
-		return result, err
-	}
-	if fanned == 0 {
-		result.ManualActions = append(result.ManualActions, "openrecord was installed, but no selected agent exposes a skills directory — skills were not fanned out.")
-	} else {
-		result.ManualActions = append(result.ManualActions, fmt.Sprintf("openrecord skills were fanned out to %d agent(s).", fanned))
-	}
-
-	after := DetectStatus(homeDir, detector, runner)
-	result.StatusAfter = &after
-	return result, nil
+	return InstallResult{FannedOut: fanned}, err
 }
 
 // binaryInstallCommand mirrors effectiveMethod's own predicate (Go on PATH

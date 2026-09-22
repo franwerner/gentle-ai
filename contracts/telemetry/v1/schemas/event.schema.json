@@ -65,8 +65,9 @@
       "items": {
         "type": "string",
         "enum": [
-          "engram", "sdd", "skills", "context7", "persona",
-          "permissions", "gga", "theme", "claude-theme", "opencode-gentle-logo"
+          "engram", "openrecord", "sdd", "skills", "context7",
+          "persona", "permissions", "gga", "theme", "claude-theme",
+          "opencode-gentle-logo"
         ]
       }
     },

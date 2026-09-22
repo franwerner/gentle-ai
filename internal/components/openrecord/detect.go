@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
 )
 
 // BinaryName is the command name installed by both routes of InstallMethod
@@ -98,12 +97,21 @@ func resolveBinaryPath(homeDir string, detector communitytool.Detector) (string,
 	return "", false
 }
 
+// Status reports whether the openrecord binary is installed, and where. It is
+// openrecord's own type rather than communitytool.Status because openrecord is
+// a gentle-ai component, not a community tool, and has no CommunityToolID to
+// identify itself with.
+type Status struct {
+	CLI     communitytool.Availability
+	CLIPath string
+}
+
 // DetectStatus reports openrecord's installed/absent state. Presence alone is
 // not enough — a shadowed or broken binary would still resolve on PATH — so
 // this actually runs `<path> version` and reports installed only when it
 // succeeds, the same two-question shape openrecord's own `qmd status` uses.
-func DetectStatus(homeDir string, detector communitytool.Detector, runner communitytool.Runner) communitytool.Status {
-	status := communitytool.Status{Tool: model.CommunityToolOpenRecord, CLI: communitytool.AvailabilityMissing}
+func DetectStatus(homeDir string, detector communitytool.Detector, runner communitytool.Runner) Status {
+	status := Status{CLI: communitytool.AvailabilityMissing}
 	path, found := resolveBinaryPath(homeDir, detector)
 	if !found || runner == nil {
 		return status

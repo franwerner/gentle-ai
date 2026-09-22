@@ -187,14 +187,15 @@ test_dry_run_preset_custom() {
 # --- Category 1e: Preset component order validation ---
 
 test_preset_minimal_components() {
-    log_test "Preset minimal with persona=custom produces only engram component"
+    log_test "Preset minimal with persona=custom produces only the engram and openrecord components"
 
     # Use persona=custom to test the preset alone, since persona is now
     # driven by Selection.Persona (decoupled from preset).
     output=$($BINARY install --preset minimal --persona custom --agent claude-code --dry-run 2>&1) || true
 
-    # The component list should contain engram
+    # The component list should contain engram and openrecord
     assert_output_contains "$output" "engram" "Minimal preset includes engram"
+    assert_output_contains "$output" "openrecord" "Minimal preset includes openrecord"
     # Should NOT contain sdd, skills, persona, etc.
     assert_output_not_contains "$output" "Components order:.*sdd" "Minimal preset excludes sdd"
     assert_output_not_contains "$output" "Components order:.*persona" "Minimal + persona=custom excludes persona"
@@ -211,21 +212,23 @@ test_preset_minimal_with_default_persona_includes_persona() {
     components_line=$(echo "$output" | grep "Components order:")
 
     assert_output_contains "$components_line" "engram" "Minimal includes engram"
+    assert_output_contains "$components_line" "openrecord" "Minimal includes openrecord"
     assert_output_contains "$components_line" "persona" "Minimal + default Gentleman persona includes persona"
 }
 
 test_preset_ecosystem_components() {
-    log_test "Preset ecosystem-only with persona=custom produces 5 components"
+    log_test "Preset ecosystem-only with persona=custom produces 6 components"
 
     # Use persona=custom to test the preset alone, since persona is now
     # driven by Selection.Persona (decoupled from preset).
     output=$($BINARY install --preset ecosystem-only --persona custom --agent claude-code --dry-run 2>&1) || true
 
-    # ecosystem-only (without persona) = engram, sdd, skills, context7, gga
+    # ecosystem-only (without persona) = engram, openrecord, sdd, skills, context7, gga
     local components_line
     components_line=$(echo "$output" | grep "Components order:")
 
     assert_output_contains "$components_line" "engram" "Ecosystem includes engram"
+    assert_output_contains "$components_line" "openrecord" "Ecosystem includes openrecord"
     assert_output_contains "$components_line" "sdd" "Ecosystem includes sdd"
     assert_output_contains "$components_line" "skills" "Ecosystem includes skills"
     assert_output_contains "$components_line" "context7" "Ecosystem includes context7"
@@ -245,6 +248,7 @@ test_preset_full_with_custom_persona_excludes_persona() {
     components_line=$(echo "$output" | grep "Components order:")
 
     assert_output_contains "$components_line" "engram" "Full + persona=custom keeps engram"
+    assert_output_contains "$components_line" "openrecord" "Full + persona=custom keeps openrecord"
     assert_output_contains "$components_line" "permissions" "Full + persona=custom keeps permissions"
     assert_output_not_contains "$components_line" "persona" "Full + persona=custom excludes persona"
 }
@@ -258,6 +262,7 @@ test_preset_full_components() {
     components_line=$(echo "$output" | grep "Components order:")
 
     assert_output_contains "$components_line" "engram" "Full includes engram"
+    assert_output_contains "$components_line" "openrecord" "Full includes openrecord"
     assert_output_contains "$components_line" "sdd" "Full includes sdd"
     assert_output_contains "$components_line" "skills" "Full includes skills"
     assert_output_contains "$components_line" "context7" "Full includes context7"
@@ -320,6 +325,11 @@ test_preset_no_legacy_theme_in_any_preset() {
         else
             log_pass "Preset '$preset' excludes unsafe generic theme component"
         fi
+        if echo "$order_str" | tr ',' '\n' | grep -qx "openrecord"; then
+            log_pass "Preset '$preset' includes openrecord"
+        else
+            log_fail "Preset '$preset' must include openrecord"
+        fi
         if [ "$preset" = "full-gentleman" ]; then
             full_order_str=$order_str
         fi
@@ -343,6 +353,7 @@ test_preset_custom_no_components() {
     local components_line
     components_line=$(echo "$output" | grep "Components order:")
     assert_output_not_contains "$components_line" "engram" "Custom preset without components excludes engram"
+    assert_output_not_contains "$components_line" "openrecord" "Custom preset without components excludes openrecord"
     assert_output_not_contains "$components_line" "sdd" "Custom preset without components excludes sdd"
     assert_output_not_contains "$components_line" "skills" "Custom preset without components excludes skills"
 }
@@ -357,6 +368,7 @@ test_preset_custom_explicit_components() {
     assert_output_contains "$components_line" "engram" "Custom + explicit components includes engram"
     assert_output_contains "$components_line" "sdd" "Custom + explicit components includes sdd"
     assert_output_contains "$components_line" "skills" "Custom + explicit components includes skills"
+    assert_output_not_contains "$components_line" "openrecord" "Custom + explicit components excludes openrecord"
     assert_output_not_contains "$components_line" "persona" "Custom + explicit components excludes persona"
     assert_output_not_contains "$components_line" "context7" "Custom + explicit components excludes context7"
 }
@@ -1172,7 +1184,7 @@ test_minimal_preset_opencode_only_engram_no_persona() {
 }
 
 test_minimal_preset_claude_only_engram() {
-    log_test "Minimal preset: Claude Code (only engram, nothing else)"
+    log_test "Minimal preset: Claude Code (engram and openrecord only, nothing else)"
     cleanup_test_env
 
     if $BINARY install --agent claude-code --preset minimal --persona custom 2>&1; then
@@ -1190,9 +1202,18 @@ test_minimal_preset_claude_only_engram() {
         else
             log_pass "No settings.json in minimal (correct)"
         fi
-        # No skills directory (or empty)
+        # The skills component is not in the minimal preset, so none of its
+        # skills may appear. openrecord is in the preset and fans out its own
+        # skills, so the directory itself may exist — what must not be there
+        # is a gentle-ai skill.
         if [ -d "$HOME/.claude/skills" ]; then
-            log_fail "Minimal preset should not create skills directory (skills component not in minimal preset)"
+            local foreign_skills
+            foreign_skills=$(find "$HOME/.claude/skills" -name "SKILL.md" -type f -not -path "*/openrecord-*/*" | wc -l | tr -d ' ')
+            if [ "$foreign_skills" -eq 0 ]; then
+                log_pass "Minimal preset installs no gentle-ai skills (only openrecord's own)"
+            else
+                log_fail "Minimal preset installed $foreign_skills non-openrecord skill files (skills component not in minimal preset)"
+            fi
         else
             log_pass "No skills directory in minimal (correct)"
         fi

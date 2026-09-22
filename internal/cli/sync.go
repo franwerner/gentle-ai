@@ -26,6 +26,7 @@ import (
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/gga"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/mcp"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/opencodeplugin"
+	"github.com/gentleman-programming/gentle-ai/v2/internal/components/openrecord"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/permissions"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/persona"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/sdd"
@@ -373,6 +374,7 @@ func BuildSyncSelection(flags SyncFlags, agentIDs []model.AgentID) model.Selecti
 		model.ComponentPersona,
 		model.ComponentSDD,
 		model.ComponentEngram,
+		model.ComponentOpenRecord,
 		model.ComponentContext7,
 		model.ComponentGGA,
 		model.ComponentSkills,
@@ -434,6 +436,11 @@ func RestorePersistedSelection(selection *model.Selection, persisted state.Insta
 	if model.CarriesSDDWork(explicit.Profiles, explicit.ModelAssignments) {
 		selection.EnsureComponent(model.ComponentSDD)
 	}
+	// Every state.json written before openrecord became a first-class component
+	// lacks it, and the restore above overwrites the freshly built list with the
+	// persisted one — so without this the component would never reach an
+	// existing install, forever. Same class of bug as the SDD line above (#3430).
+	selection.EnsureComponent(model.ComponentOpenRecord)
 }
 
 func setSelectionComponent(selection *model.Selection, component model.ComponentID, configured, included bool) {
@@ -1063,6 +1070,31 @@ func (s componentSyncStep) Run() error {
 				return fmt.Errorf("sync engram for %q: %w", adapter.Agent(), err)
 			}
 			s.countChanged(boolToInt(res.Changed), res.Files...)
+		}
+		return nil
+
+	case model.ComponentOpenRecord:
+		// Sync: re-emit the skills and fan them out only.
+		// NO binary install. NO `openrecord qmd install`.
+		// Same inject-only split the engram arm above holds.
+		//
+		// An absent binary is a hard failure, matching the doctor, which lists
+		// openrecord in coreTools and FAILs without it. This arm used to warn
+		// and continue, which left the two surfaces giving a user two verdicts
+		// on one machine — the doctor calling the install broken while sync
+		// called it fine. Sync provisions nothing, so finding no binary here
+		// means `gentle-ai install` never ran or did not finish; that is a
+		// broken install, and the error names the command that fixes it.
+		runner := communitytool.RunnerFunc(runCommand)
+		if openrecord.DetectStatus(s.homeDir, communitytool.DetectorFunc(cmdLookPath), runner).CLI != communitytool.AvailabilityAvailable {
+			return errors.New("sync openrecord: the openrecord binary is not installed, so its skills cannot be refreshed; run `gentle-ai install` to install it")
+		}
+		result, err := syncOpenRecordWithHome(s.homeDir, s.agents, runner)
+		if err != nil {
+			return fmt.Errorf("sync openrecord: %w", err)
+		}
+		if result.FannedOut == 0 {
+			fmt.Fprintln(os.Stderr, "WARNING: no selected agent exposes a skills directory — openrecord skills were not fanned out.")
 		}
 		return nil
 
