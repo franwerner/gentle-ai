@@ -39,8 +39,7 @@ Save:
   Set capture_prompt: false when the Engram tool schema supports it; if an older schema rejects or does not expose the field, omit it rather than failing.
 
 Then:
-1. Sync delta specs into main specs (source of truth)
-2. Move the change folder to archive with date prefix
-3. Verify the archive is complete
+1. Move the change folder to archive with date prefix
+2. Verify the archive is complete
 
 Return a structured result with: status, executive_summary, artifacts, and next_recommended.

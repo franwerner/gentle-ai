@@ -62,16 +62,18 @@ FOR EACH entry under "New Capabilities":
 
 FOR EACH entry under "Modified Capabilities":
 ├── This becomes a DELTA spec: openspec/changes/{change-name}/specs/<capability-name>/spec.md
-└── Read existing openspec/specs/<capability-name>/spec.md first — your delta modifies it
+└── Read the capability's existing record first — your delta modifies the behaviour it already holds
 ```
 
-Both kinds live under the change. A new capability is written under the change; sdd-archive promotes it to `openspec/specs/<capability-name>/spec.md`; never write to `openspec/specs/` during the spec phase. The dispatcher reads only `openspec/changes/{change-name}/specs/<capability-name>/spec.md`, and a spec written anywhere else keeps the change routed to `spec`.
+Both kinds live under the change, and nothing durable lives under `openspec/` — a capability's durable home is the record store, which `sdd-apply` alone writes. The dispatcher reads only `openspec/changes/{change-name}/specs/<capability-name>/spec.md`, and a spec written anywhere else keeps the change routed to `spec`.
 
 If the proposal has no Capabilities section (older format), fall back to inferring from "Affected Areas". But always prefer the explicit Capabilities mapping when present.
 
 ### Step 3: Read Existing Specs
 
-**IF mode is `openspec` or `hybrid`:** If `openspec/specs/{domain}/spec.md` exists, read it to understand CURRENT behavior. Your delta specs describe CHANGES to this behavior.
+The capability's existing record is what carries CURRENT behavior. You already read it under the record-store contract above; your delta specs describe CHANGES to that behavior.
+
+**IF mode is `openspec` or `hybrid`:** There is no additional filesystem spec to read — `openspec/` holds only this change's in-flight artifacts and archived history.
 
 **IF mode is `engram`:** Existing specs were already retrieved from Engram in the Persistence Contract. Skip filesystem reads.
 
@@ -96,15 +98,15 @@ openspec/changes/{change-name}/
 When writing a `## MODIFIED Requirements` section, follow this exact workflow:
 
 ```
-1. Locate the requirement in openspec/specs/{domain}/spec.md
+1. Read the capability's existing record — the only place its current behavior is durable
 2. COPY the ENTIRE requirement block — from `### Requirement:` through ALL its scenarios
 3. PASTE it under `## MODIFIED Requirements`
 4. EDIT the copy to reflect the new behavior
 5. Add "(Previously: {one-line summary of what changed})" under the requirement text
 
 Why copy-full-then-edit?
-→ The archive step REPLACES the requirement in main specs with your MODIFIED block
-→ If your block is partial, the archive will lose scenarios you didn't copy
+→ This artifact is what sdd-apply ships into the record, and a section is the smallest thing a record can replace
+→ If your block is partial, everything that section already held is gone — this is the record-store contract's "Whole sections, never a patch"
 → Common pitfall: only writing the changed scenario and losing the rest
 → If adding NEW behavior WITHOUT changing existing behavior, use ADDED instead
 ```
@@ -171,7 +173,7 @@ The system {MUST/SHALL/SHOULD} {do something specific}.
 
 #### For NEW Specs (No Existing Spec)
 
-If this is a completely new domain, create a FULL spec (not a delta) at `openspec/changes/{change-name}/specs/{domain}/spec.md`. Do not write it to `openspec/specs/{domain}/spec.md`; sdd-archive promotes it there.
+If this is a completely new domain, create a FULL spec (not a delta) at `openspec/changes/{change-name}/specs/{domain}/spec.md`. The spec phase writes no record file of its own; `sdd-apply` materializes it.
 
 ```markdown
 # {Domain} Specification

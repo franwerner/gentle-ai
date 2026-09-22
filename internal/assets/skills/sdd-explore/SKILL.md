@@ -51,7 +51,7 @@ The orchestrator will give you:
 > Follow **Section B** from `skills/_shared/sdd-phase-common.md` for retrieval.
 
 - **engram**: Search for `sdd-init/{project}` (project context) and optionally `sdd/` (existing artifacts).
-- **openspec**: Read `openspec/config.yaml` and `openspec/specs/`.
+- **openspec**: Read `openspec/config.yaml` and `openspec/changes/`.
 - **none**: Use whatever context the orchestrator passed in the prompt.
 
 ## What to Do

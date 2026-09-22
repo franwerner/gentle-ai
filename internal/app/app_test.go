@@ -1613,6 +1613,40 @@ func TestRunArgsRetiredWorkCommandsNoLongerDispatch(t *testing.T) {
 	}
 }
 
+// TestRunArgsRetiredArchiveComposeNoLongerDispatches proves the durable
+// spec-merge surface is gone. `sdd-archive-compose` existed for exactly one
+// caller — the sdd-archive skill's "merge this delta into
+// openspec/specs/{domain}/spec.md" step — and that step no longer exists:
+// capability specs are durable in the record store, written by sdd-apply, and
+// archive only moves the change folder. The verb follows the retired work-*
+// commands: dispatch is removed so it falls through to the unknown-command
+// error rather than composing a canonical spec nothing reads.
+func TestRunArgsRetiredArchiveComposeNoLongerDispatches(t *testing.T) {
+	origSelfUpdate := selfUpdateFn
+	origDetect := detectSystem
+	origEnsure := ensureCurrentOSSupported
+	t.Cleanup(func() {
+		selfUpdateFn = origSelfUpdate
+		detectSystem = origDetect
+		ensureCurrentOSSupported = origEnsure
+	})
+	ensureCurrentOSSupported = func() error { return nil }
+	detectSystem = func(context.Context) (system.DetectionResult, error) {
+		return system.DetectionResult{System: system.SystemInfo{Supported: true}}, nil
+	}
+	selfUpdateFn = func(context.Context, string, system.PlatformProfile, io.Writer) error { return nil }
+
+	const command = "sdd-archive-compose"
+	var buf bytes.Buffer
+	err := RunArgs([]string{command}, &buf)
+	if err == nil {
+		t.Fatalf("RunArgs(%q) error = nil, want unknown command", command)
+	}
+	if !strings.Contains(err.Error(), fmt.Sprintf("unknown command %q", command)) {
+		t.Fatalf("RunArgs(%q) error = %v, want unknown command", command, err)
+	}
+}
+
 func TestRunArgs_UpdateSkipsSelfUpdate(t *testing.T) {
 	origSelfUpdate := selfUpdateFn
 	origCheckAll := updateCheckAll

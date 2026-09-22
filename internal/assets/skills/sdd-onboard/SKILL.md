@@ -177,15 +177,15 @@ Run `sdd-verify` behavior. Explain the compliance matrix:
 ### Phase 9: Archive (narrated)
 
 ```
-"Step 8: Archive — We merge our delta specs into the main specs and close the change.
- The specs now describe the new behavior. The change becomes the audit trail."
+"Step 8: Archive — We close the change and move it into the audit trail.
+ The durable specs were already updated when we applied the code."
 ```
 
 Run `sdd-archive` behavior. Show the result:
 
 ```
 "Done! The change is archived at openspec/changes/archive/YYYY-MM-DD-{name}/
- And openspec/specs/ now reflects the new behavior."
+ and the durable specs already reflect the new behavior."
 ```
 
 ### Phase 10: Summary
@@ -215,7 +215,7 @@ Small tweaks? Just code. Features, APIs, architecture decisions? SDD first.
 
 **Next steps**:
 - Try /sdd-new for your next real feature
-- Check openspec/specs/ — that's your growing source of truth
+- Check the durable specs — that's your growing source of truth
 - Questions? The orchestrator is always available
 ```
 

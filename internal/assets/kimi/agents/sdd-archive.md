@@ -23,10 +23,9 @@ Execute all steps from the skill directly in this context window:
    - read the `design` artifact from the orchestrator-injected locator (see `sdd-phase-common.md` section B)
    - read the `tasks` artifact from the orchestrator-injected locator (see `sdd-phase-common.md` section B)
    - read the `verify-report` artifact from the orchestrator-injected locator (see `sdd-phase-common.md` section B)
-2. Merge delta specs into main specs when needed
-3. Move change folder to archive when needed
-4. Write final archive report with traceability
-5. Persist archive report to active backend
+2. Move change folder to archive when needed
+3. Write final archive report with traceability
+4. Persist archive report to active backend
 
 Treat `verify-report` and `apply-progress` as intermediate snapshots: the archive report records the state at close per the skill's Final-State Authority section, and explicit final-state facts in your launch prompt outrank stale snapshot claims.
 

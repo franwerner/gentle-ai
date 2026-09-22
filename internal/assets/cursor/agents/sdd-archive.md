@@ -2,7 +2,7 @@
 name: sdd-archive
 description: >
   Archive a completed and verified change. Use when verification has passed and the change
-  needs to be closed — merges delta specs into main specs, moves change folder to archive,
+  needs to be closed — moves the change folder to archive,
   and persists the final archive report. Completes the SDD cycle.
 model: inherit
 readonly: false
@@ -24,10 +24,9 @@ Execute all steps from the skill directly in this context window:
    - read the `design` artifact from the orchestrator-injected locator (see `sdd-phase-common.md` section B)
    - read the `tasks` artifact from the orchestrator-injected locator (see `sdd-phase-common.md` section B)
    - read the `verify-report` artifact from the orchestrator-injected locator (see `sdd-phase-common.md` section B)
-2. Merge delta specs into main specs (openspec/hybrid mode)
-3. Move change folder to archive (openspec/hybrid mode)
-4. Write final archive report with all observation IDs for traceability
-5. Persist archive report to active backend
+2. Move change folder to archive (openspec/hybrid mode)
+3. Write final archive report with all observation IDs for traceability
+4. Persist archive report to active backend
 
 Treat `verify-report` and `apply-progress` as intermediate snapshots: the archive report records the state at close per the skill's Final-State Authority section, and explicit final-state facts in your launch prompt outrank stale snapshot claims.
 

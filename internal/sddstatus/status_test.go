@@ -1365,7 +1365,7 @@ func TestResolveFlatSpecsLayoutNamesNestedLayoutOnSpecRoute(t *testing.T) {
 	if status.NextRecommended != "spec" {
 		t.Fatalf("NextRecommended = %q, want %q", status.NextRecommended, "spec")
 	}
-	want := "openspec/changes/flat-specs/specs/ has files but no non-empty <domain>/spec.md; the spec phase writes every capability (new ones as full specs) at openspec/changes/flat-specs/specs/<domain>/spec.md, and sdd-archive promotes new ones to openspec/specs/<domain>/spec.md"
+	want := "openspec/changes/flat-specs/specs/ has files but no non-empty <domain>/spec.md; the spec phase writes every capability (new ones as full specs) at openspec/changes/flat-specs/specs/<domain>/spec.md"
 	if !reflect.DeepEqual(status.BlockedReasons, []string{want}) {
 		t.Fatalf("BlockedReasons = %v, want [%q]", status.BlockedReasons, want)
 	}

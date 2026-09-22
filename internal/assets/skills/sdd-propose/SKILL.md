@@ -66,7 +66,7 @@ openspec/changes/{change-name}/
 
 ### Step 3: Read Existing Specs
 
-**IF mode is `openspec` or `hybrid`:** If `openspec/specs/` has relevant specs, read them to understand current behavior that this change might affect.
+**IF mode is `openspec` or `hybrid`:** `openspec/` carries only in-flight change artifacts and archived history — current behavior comes from the records you read under the record-store contract above.
 
 **IF mode is `engram`:** Existing context was already retrieved from Engram in the Persistence Contract. Skip filesystem reads.
 
@@ -97,10 +97,10 @@ Be specific about the user need or technical debt being addressed.}
 
 > This section is the CONTRACT between proposal and specs phases.
 > The sdd-spec agent reads this to know exactly which spec files to create or update.
-> Research `openspec/specs/` before filling this in.
+> Research the existing records before filling this in.
 
 ### New Capabilities
-<!-- Capabilities being introduced. Each gets a full spec at `openspec/changes/{change-name}/specs/<name>/spec.md` during the spec phase and becomes `openspec/specs/<name>/spec.md` at archive.
+<!-- Capabilities being introduced. Each gets a full spec at `openspec/changes/{change-name}/specs/<name>/spec.md` during the spec phase and becomes a durable record when sdd-apply materializes it.
      Use kebab-case names (e.g., user-auth, data-export, api-rate-limiting).
      Leave empty if no new capabilities. -->
 - `<capability-name>`: <brief description of what this capability covers>
@@ -108,7 +108,7 @@ Be specific about the user need or technical debt being addressed.}
 ### Modified Capabilities
 <!-- Existing capabilities whose REQUIREMENTS are changing (not just implementation).
      Only list here if spec-level behavior changes. Each needs a delta spec.
-     Use existing spec names from openspec/specs/. Leave empty if none. -->
+     Use the names the existing records already carry. Leave empty if none. -->
 - `<existing-capability-name>`: <what requirement is changing>
 
 ## Approach
@@ -181,8 +181,8 @@ Ready for specs (sdd-spec) or design (sdd-design).
 - Require the confirmed pre-proposal handoff. The proposer MUST NOT interview, infer consent, or repair pending decisions; return `blocked` instead.
 - Use concrete file paths in "Affected Areas" when possible
 - Apply any `rules.proposal` from `openspec/config.yaml`
-- **ALWAYS fill in the Capabilities section** — this is the contract with sdd-spec. Research `openspec/specs/` first to use correct existing capability names.
-- New Capabilities → each gets a full spec at `openspec/changes/{change-name}/specs/<name>/spec.md` during the spec phase and becomes `openspec/specs/<name>/spec.md` at archive
+- **ALWAYS fill in the Capabilities section** — this is the contract with sdd-spec. Research the existing records first to use correct existing capability names.
+- New Capabilities → each gets a full spec at `openspec/changes/{change-name}/specs/<name>/spec.md` during the spec phase and becomes a durable record when sdd-apply materializes it
 - Modified Capabilities → each will become a delta spec in the change folder
 - If nothing changes at the spec level (pure refactor, config change), explicitly write "None" under both sub-sections — don't leave them as template placeholders
 - **Size budget**: Proposal artifact MUST be under 450 words. Use bullet points and tables over prose. Headers organize, not explain.

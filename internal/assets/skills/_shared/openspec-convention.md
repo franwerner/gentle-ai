@@ -5,9 +5,6 @@
 ```
 openspec/
 ├── config.yaml              <- Project-specific SDD config
-├── specs/                   <- Source of truth (main specs)
-│   └── {domain}/
-│       └── spec.md
 └── changes/                 <- Active changes
     ├── archive/             <- Completed changes (YYYY-MM-DD-{change-name}/)
     └── {change-name}/       <- Active change folder
@@ -28,7 +25,7 @@ openspec/
 | Skill | Creates / Reads | Path |
 |-------|----------------|------|
 | orchestrator | Creates/Updates | `openspec/changes/{change-name}/state.yaml` |
-| sdd-init | Creates | `openspec/config.yaml`, `openspec/specs/`, `openspec/changes/`, `openspec/changes/archive/` |
+| sdd-init | Creates | `openspec/config.yaml`, `openspec/changes/`, `openspec/changes/archive/` |
 | sdd-explore | Creates (optional) | `openspec/changes/{change-name}/exploration.md` |
 | sdd-research | Creates (when selected) | `openspec/changes/{change-name}/research.md` |
 | sdd-propose | Creates | `openspec/changes/{change-name}/proposal.md` |
@@ -38,7 +35,6 @@ openspec/
 | sdd-apply | Updates | `openspec/changes/{change-name}/tasks.md` (marks `[x]`) |
 | sdd-verify | Creates | `openspec/changes/{change-name}/verify-report.md` |
 | sdd-archive | Moves | `openspec/changes/{change-name}/` → `openspec/changes/archive/YYYY-MM-DD-{change-name}/` |
-| sdd-archive | Updates | `openspec/specs/{domain}/spec.md` (merges deltas into main specs) |
 
 ## Reading Artifacts
 
@@ -49,8 +45,11 @@ Design:     openspec/changes/{change-name}/design.md
 Tasks:      openspec/changes/{change-name}/tasks.md
 Verify:     openspec/changes/{change-name}/verify-report.md
 Config:     openspec/config.yaml
-Main specs: openspec/specs/{domain}/spec.md
 ```
+
+`openspec/` holds a change's in-flight artifacts and, once archived, its audit trail. It is not a
+durable behaviour store: nothing under `openspec/` outlives the change that wrote it except as
+archived history.
 
 `research.md` contains exact `gentle-ai.sdd-research/v1` bytes. Hybrid pre-proposal state uses `gentle-ai.sdd-preproposal/v1`; compare its revision and bytes with Engram before readiness and never prefer one store after mismatch.
 

@@ -2536,21 +2536,10 @@ func TestSDDArchiveStoreSpecificFilesystemContract(t *testing.T) {
 
 	skill := MustRead("skills/sdd-archive/SKILL.md")
 	for _, required := range []string{
-		"target_dir=\"openspec/specs/{domain}\"",
-		"target_path=\"$target_dir/spec.md\"",
-		"mkdir -p \"$target_dir\"",
-		"temp_path=\"$(mktemp \"$target_dir/.spec.md.XXXXXX\")\"",
-		"cleanup_temp()",
-		"rm -f \"$temp_path\" || :",
-		"trap cleanup_temp EXIT",
-		"if cp \"openspec/changes/{change-name}/specs/{domain}/spec.md\" \"$temp_path\"; then",
-		"copy_status=$?",
-		"if diff -r \"openspec/changes/{change-name}/specs/{domain}/spec.md\" \"$temp_path\"; then",
 		"diff_status=0",
 		"diff_status=$?",
 		"if [ \"$diff_status\" -ne 0 ]; then",
 		"exit \"$diff_status\"",
-		"if mv \"$temp_path\" \"$target_path\"; then",
 		"move_status=$?",
 		"exit \"$move_status\"",
 		"snapshot_root=\"$(mktemp -d \"${TMPDIR:-/tmp}/sdd-archive.XXXXXX\")\"",
@@ -2567,7 +2556,7 @@ func TestSDDArchiveStoreSpecificFilesystemContract(t *testing.T) {
 		"if [ -e \"$source\" ] || [ -L \"$source\" ]; then",
 		"if diff -r \"$snapshot_root/source\" \"$destination\"; then",
 		"only empty diff output passes",
-		"verbatim `diff -r` output from Steps 2 and 3 MUST appear in the phase result",
+		"verbatim `diff -r` output from Step 2 MUST appear in the phase result",
 		"A failed or skipped `diff -r` FAILS the phase",
 		"The `snapshot_root` is removed safely by the EXIT trap",
 		"source %s and destination %s remain unchanged",
@@ -2594,31 +2583,11 @@ func TestSDDArchiveStoreSpecificFilesystemContract(t *testing.T) {
 		}
 	}
 
-	copyStart := strings.Index(skill, "#### If Main Spec Does NOT Exist")
-	if copyStart < 0 {
-		t.Fatal("full-spec copy block boundaries are missing")
-	}
-	copyEnd := strings.Index(skill[copyStart:], "### Step 3: Move to Archive")
-	if copyEnd < 0 {
-		t.Fatal("full-spec copy block end is missing")
-	}
-	copyBlock := skill[copyStart : copyStart+copyEnd]
-	assertOrdered("full-spec copy", copyBlock,
-		"temp_path=\"$(mktemp \"$target_dir/.spec.md.XXXXXX\")\"",
-		"if cp \"openspec/changes/{change-name}/specs/{domain}/spec.md\" \"$temp_path\"; then",
-		"else\n  copy_status=$?\n  exit \"$copy_status\"",
-		"if diff -r \"openspec/changes/{change-name}/specs/{domain}/spec.md\" \"$temp_path\"; then",
-		"else\n  diff_status=$?",
-		"if [ \"$diff_status\" -ne 0 ]; then\n  exit \"$diff_status\"",
-		"if mv \"$temp_path\" \"$target_path\"; then",
-		"else\n  move_status=$?\n  exit \"$move_status\"",
-	)
-
-	moveStart := strings.Index(skill, "### Step 3: Move to Archive")
+	moveStart := strings.Index(skill, "### Step 2: Move to Archive")
 	if moveStart < 0 {
 		t.Fatal("archive move block boundaries are missing")
 	}
-	moveEnd := strings.Index(skill[moveStart:], "### Step 4: Verify Archive")
+	moveEnd := strings.Index(skill[moveStart:], "### Step 3: Verify Archive")
 	if moveEnd < 0 {
 		t.Fatal("archive move block end is missing")
 	}
@@ -2794,7 +2763,7 @@ func setupArchiveFixture(t *testing.T, tracked bool) (root, source, destination,
 
 func runArchiveMoveTransaction(shell, root string) (string, error) {
 	const changeName = "change"
-	transaction := archiveFencedShellBlock("### Step 3: Move to Archive")
+	transaction := archiveFencedShellBlock("### Step 2: Move to Archive")
 	transaction = strings.ReplaceAll(transaction, "{change-name}", changeName)
 	transaction = strings.ReplaceAll(transaction, "YYYY-MM-DD-"+changeName, "2030-01-02-"+changeName)
 	command := exec.Command(shell, "-c", transaction)
@@ -2972,33 +2941,68 @@ func TestSDDTaskResultArtifactsPluginUsesCoordinatorGuidanceWithoutIdentity(t *t
 // The shipped skills used to send new capabilities to openspec/specs/, a
 // root the dispatcher never reads, so the actor could follow the skill and
 // still get nextRecommended: spec forever.
+//
+// openspec/specs/ has since stopped being a durable store at all — the
+// record store holds capability specs and sdd-apply is its sole writer — so
+// the "sdd-archive promotes it there" half of this pin is gone. What it
+// protected survives in two pieces: the change-local path the dispatcher
+// actually reads is still pinned positively, and TestNoShippedAssetNames
+// ADurableOpenSpecSpecsRoot below pins the absence of the old destination
+// across the whole asset tree.
 func TestSDDSpecAndProposeNameTheChangeLocalSpecLocation(t *testing.T) {
 	spec := MustRead("skills/sdd-spec/SKILL.md")
 	for _, required := range []string{
 		"This becomes a NEW FULL spec: openspec/changes/{change-name}/specs/<capability-name>/spec.md",
-		"never write to `openspec/specs/` during the spec phase",
-		"sdd-archive promotes it to `openspec/specs/<capability-name>/spec.md`",
+		"nothing durable lives under `openspec/`",
+		"The spec phase writes no record file of its own; `sdd-apply` materializes it.",
 		"create a FULL spec (not a delta) at `openspec/changes/{change-name}/specs/{domain}/spec.md`",
 	} {
 		if !strings.Contains(spec, required) {
 			t.Fatalf("skills/sdd-spec/SKILL.md missing change-local spec location wording %q", required)
 		}
 	}
-	if strings.Contains(spec, "This becomes a NEW full spec: openspec/specs/<capability-name>/spec.md") {
-		t.Fatalf("skills/sdd-spec/SKILL.md still sends new capabilities to the canonical openspec/specs/ root")
-	}
 
 	propose := MustRead("skills/sdd-propose/SKILL.md")
-	required := "gets a full spec at `openspec/changes/{change-name}/specs/<name>/spec.md` during the spec phase and becomes `openspec/specs/<name>/spec.md` at archive"
+	required := "gets a full spec at `openspec/changes/{change-name}/specs/<name>/spec.md` during the spec phase and becomes a durable record when sdd-apply materializes it"
 	if got := strings.Count(propose, required); got != 2 {
 		t.Fatalf("skills/sdd-propose/SKILL.md contains %d copies of %q, want 2 (template comment and checklist)", got, required)
 	}
 	for _, forbidden := range []string{
 		"Each becomes a new `openspec/specs/<name>/spec.md`",
 		"each will become `openspec/specs/<name>/spec.md`",
+		"becomes `openspec/specs/<name>/spec.md` at archive",
 	} {
 		if strings.Contains(propose, forbidden) {
 			t.Fatalf("skills/sdd-propose/SKILL.md still states the spec-phase location as the archive outcome: %q", forbidden)
 		}
+	}
+}
+
+// TestNoShippedAssetNamesADurableOpenSpecSpecsRoot is the absence half of the
+// six pins that used to fix the sentences sending capabilities to
+// openspec/specs/. That root is no longer a durable store anywhere in the
+// shipped product: capability specs live in the record store, sdd-apply is
+// its sole writer, and sdd-archive only moves the change folder. A literal
+// substring sweep over every shipped asset is what keeps a rewrite from
+// reintroducing the destination in a phrasing no single-file pin anticipated.
+//
+// openspec/changes/ is untouched by this and stays a valid artifact store —
+// only the durable specs/ sibling is gone, so the check is anchored on the
+// exact "openspec/specs" prefix rather than on "openspec".
+func TestNoShippedAssetNamesADurableOpenSpecSpecsRoot(t *testing.T) {
+	err := fs.WalkDir(FS, ".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if strings.Contains(MustRead(path), "openspec/specs") {
+			t.Errorf("%s names openspec/specs as a durable spec root; capability specs live in the record store", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk assets: %v", err)
 	}
 }

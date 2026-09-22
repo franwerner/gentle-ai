@@ -1854,7 +1854,7 @@ func artifactBlockedReasons(artifacts map[string]ArtifactState, taskProgress Tas
 // only the OpenSpec resolver appends it.
 func openSpecSpecsLayoutReason(changeName string) string {
 	specsDir := "openspec/changes/" + changeName + "/specs/"
-	return specsDir + " has files but no non-empty <domain>/spec.md; the spec phase writes every capability (new ones as full specs) at " + specsDir + "<domain>/spec.md, and sdd-archive promotes new ones to openspec/specs/<domain>/spec.md"
+	return specsDir + " has files but no non-empty <domain>/spec.md; the spec phase writes every capability (new ones as full specs) at " + specsDir + "<domain>/spec.md"
 }
 
 func resolveApplyState(coreReady bool, taskProgress TaskProgress) ApplyState {

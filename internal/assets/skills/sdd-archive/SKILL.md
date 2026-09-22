@@ -1,6 +1,6 @@
 ---
 name: sdd-archive
-description: "Archive a completed SDD change by syncing delta specs. Trigger: orchestrator launches archive after implementation and verification."
+description: "Archive a completed SDD change by moving its change folder to the audit trail. Trigger: orchestrator launches archive after implementation and verification."
 disable-model-invocation: true
 user-invocable: false
 license: MIT
@@ -28,7 +28,9 @@ Public/contextual comments follow the target context language by default. Explic
 
 ## Purpose
 
-You are a sub-agent responsible for ARCHIVING. You merge delta specs into the main specs (source of truth), then move the change folder to the archive. You complete the SDD cycle.
+You are a sub-agent responsible for ARCHIVING. You move the change folder into the archive, turning this change's artifacts into its audit trail. You complete the SDD cycle.
+
+Archive owns no durable behaviour store. A capability's durable home is written earlier in the cycle, by the phase that implements it; archive reads nothing from it, writes nothing into it, and verifies nothing about it. Its whole filesystem duty is the folder move.
 
 ## What You Receive
 
@@ -66,13 +68,13 @@ This hierarchy governs how the archive REPORTS facts. CRITICAL issues in `verify
 > Follow **Section B** (retrieval) and **Section C** (persistence) from `skills/_shared/sdd-phase-common.md`.
 
 - **engram**: Read `sdd/{change-name}/proposal`, `sdd/{change-name}/spec`, `sdd/{change-name}/design`, `sdd/{change-name}/tasks`, and `sdd/{change-name}/verify-report` (all required). Record all observation IDs actually read in the archive report for traceability. Save as `sdd/{change-name}/archive-report`.
-- **openspec**: Read and follow `skills/_shared/openspec-convention.md`. Perform merge and archive folder moves.
-- **hybrid**: Follow BOTH conventions — persist archive report to Engram (with observation IDs) AND perform filesystem merge + archive folder moves.
+- **openspec**: Read and follow `skills/_shared/openspec-convention.md`. Perform archive folder moves.
+- **hybrid**: Follow BOTH conventions — persist archive report to Engram (with observation IDs) AND perform archive folder moves.
 - **none**: Return closure summary only. Do not perform archive file operations.
 
 ### Archive Readiness
 
-Before any task reconciliation, spec sync, or archive move, require structured status. Archive only when refreshed native SDD status reports `dependencies.archive: ready` and `nextRecommended: archive`. A post-verify `reviewOffer` is an invitation only and is never read as archive state.
+Before any task reconciliation or archive move, require structured status. Archive only when refreshed native SDD status reports `dependencies.archive: ready` and `nextRecommended: archive`. A post-verify `reviewOffer` is an invitation only and is never read as archive state.
 
 The Task Completion Gate and strict independent verification decide whether archive can proceed; ordinary repository policy decides delivery.
 
@@ -80,14 +82,14 @@ The Task Completion Gate and strict independent verification decide whether arch
 
 `sdd-apply` is responsible for marking completed tasks in the persisted tasks artifact. `sdd-archive` is responsible for validating that the persisted artifact reflects the final state before closing the cycle.
 
-Before syncing specs or moving any archive folder, inspect the tasks artifact:
+Before moving any archive folder, inspect the tasks artifact:
 
 - **engram**: read the full `sdd/{change-name}/tasks` observation.
 - **openspec/hybrid**: read `openspec/changes/{change-name}/tasks.md`.
 
 If any implementation task remains unchecked (`- [ ]`):
 
-1. STOP and return `blocked`; do not sync specs, move the change folder, or claim the SDD cycle is complete.
+1. STOP and return `blocked`; do not move the change folder or claim the SDD cycle is complete.
 2. Report that `sdd-apply` must be rerun or corrected so it marks completed tasks in the persisted tasks artifact.
 3. Only proceed if the orchestrator explicitly instructs you to reconcile stale checkboxes and `apply-progress`/`verify-report` prove every unchecked task is complete. If you do this exceptional repair, record the exact reconciliation reason in the archive report.
 
@@ -111,7 +113,7 @@ OpenSpec permits archiving with incomplete artifacts or tasks after a user confi
 
 Archival is a mechanical filesystem operation. File content MUST NEVER pass through the model's Read/Write path to be copied — a model that summarizes, truncates, or alters even one byte while reporting success corrupts the audit trail silently. The only acceptable copy mechanism is a native shell command (`cp -R`, `mv`, or `git mv`), verified by a structural readback.
 
-- Copy artifacts with the shell only: `cp -R`, `mv`, or `git mv`. NEVER use Read → Write to reproduce artifact content into the archive or main specs — that routes bytes through model generation, where truncation is silent and undetectable without an independent diff.
+- Copy artifacts with the shell only: `cp -R`, `mv`, or `git mv`. NEVER use Read → Write to reproduce artifact content into the archive — that routes bytes through model generation, where truncation is silent and undetectable without an independent diff.
 - After every copy or move, run `diff -r` (source vs. destination) as a MANDATORY readback. The archive-report file is additive-only and excluded from the source/destination comparison (it did not exist in the source change folder).
 - The verbatim `diff -r` output MUST appear in the phase result. An empty `diff -r` (no differences) is the only passing evidence; any difference is a truncation or alteration and FAILS the phase. A skipped or missing `diff -r` also FAILS the phase — agent self-report is never sufficient.
 - If your platform's tool allowlist does not grant shell access, STOP and report `blocked` with the reason `shell access required for mechanical archive copy is unavailable` — do NOT fall back to Read/Write copying.
@@ -121,93 +123,7 @@ Archival is a mechanical filesystem operation. File content MUST NEVER pass thro
 ### Step 1: Load Skills
 Follow **Section A** from `skills/_shared/sdd-phase-common.md`.
 
-### Step 2: Sync Delta Specs to Main Specs
-
-Do not start this step until the **Task Completion Gate** above passes.
-
-**IF mode is `engram`:** Skip filesystem sync — artifacts live in Engram only. The archive report (Step 5) records all observation IDs for traceability.
-
-**IF mode is `none`:** Skip — no artifacts to sync.
-
-**IF mode is `openspec` or `hybrid`:** For each delta spec in `openspec/changes/{change-name}/specs/`:
-
-#### If Main Spec Exists (`openspec/specs/{domain}/spec.md`)
-
-**Mandatory Native Composition (#4119):** never Read the main spec and apply
-ADDED/MODIFIED/REMOVED/RENAMED sections yourself. A model-driven Read/Edit
-merge is exactly how archive previously dropped unrelated requirements or
-left a delta unapplied while still reporting success. Composition MUST run
-through the native `sdd-archive-compose` command, which matches requirements
-by name (e.g., "### Requirement: Session Expiration"), preserves every
-unrelated requirement byte-for-byte, and applies RENAMED before MODIFIED
-before REMOVED before ADDED so a rename is visible to a same-change MODIFIED:
-
-```bash
-gentle-ai sdd-archive-compose \
-  --canonical "openspec/specs/{domain}/spec.md" \
-  --delta "openspec/changes/{change-name}/specs/{domain}/spec.md" \
-  --output "openspec/specs/{domain}/spec.md.compose-tmp" \
-&& mv "openspec/specs/{domain}/spec.md.compose-tmp" "openspec/specs/{domain}/spec.md"
-```
-
-- A nonzero exit means the command refused: it wrote nothing, and its stderr
-  names the exact section (ADDED/MODIFIED/REMOVED/RENAMED) and requirement it
-  could not apply (unknown requirement name, missing `(Reason: ...)` note,
-  duplicate ADDED name, or a malformed RENAMED heading). Treat this as a
-  blocking failure — STOP the phase and report `blocked` with that exact
-  message. Do NOT retry with a manual Read/Edit merge, and do NOT move the
-  change into the archive.
-- The `.compose-tmp` intermediate file plus `mv` keeps the write atomic: the
-  main spec is only ever replaced by a composition the command already
-  proved is complete, never by a partial write from a failed run.
-- Only a zero exit is composition evidence. Include the command invocation
-  in the phase result.
-
-#### If Main Spec Does NOT Exist
-
-The delta spec IS a full spec (not a delta). Copy it mechanically with the shell — do NOT Read the file and Write its content back, which routes bytes through the model and can truncate silently:
-
-```bash
-# Mechanical copy (MANDATORY): never Read → Write artifact content
-target_dir="openspec/specs/{domain}"
-target_path="$target_dir/spec.md"
-mkdir -p "$target_dir"
-
-temp_path=
-cleanup_temp() {
-  if [ -n "$temp_path" ]; then
-    rm -f "$temp_path" || :
-  fi
-}
-trap cleanup_temp EXIT
-temp_path="$(mktemp "$target_dir/.spec.md.XXXXXX")"
-
-if cp "openspec/changes/{change-name}/specs/{domain}/spec.md" "$temp_path"; then
-  :
-else
-  copy_status=$?
-  exit "$copy_status"
-fi
-
-if diff -r "openspec/changes/{change-name}/specs/{domain}/spec.md" "$temp_path"; then
-  diff_status=0
-else
-  diff_status=$?
-fi
-if [ "$diff_status" -ne 0 ]; then
-  exit "$diff_status"
-fi
-
-if mv "$temp_path" "$target_path"; then
-  temp_path=
-else
-  move_status=$?
-  exit "$move_status"
-fi
-# Empty diff above is the only passing evidence; include verbatim output in the result.
-```
-
-### Step 3: Move to Archive
+### Step 2: Move to Archive
 
 **IF mode is `engram`:** Skip — there are no `openspec/` directories to move. The archive report in Engram serves as the audit trail.
 
@@ -281,7 +197,7 @@ fi
 
 Use today's date in ISO format (e.g., `2026-02-16`).
 
-The `snapshot_root` is removed safely by the EXIT trap after the readback, including when the move or comparison fails. Compare the archived folder against that pre-move recursive snapshot; do not substitute a model readback, staged tree, or post-move source. The `archive-report` you write in Step 5 is additive and excluded from the comparison because it did not exist in the source snapshot. Any non-empty `diff -r` output or non-zero status is truncation, alteration, or an operational failure and FAILS the phase; a missing `diff -r` also FAILS the phase.
+The `snapshot_root` is removed safely by the EXIT trap after the readback, including when the move or comparison fails. Compare the archived folder against that pre-move recursive snapshot; do not substitute a model readback, staged tree, or post-move source. The `archive-report` you write in Step 4 is additive and excluded from the comparison because it did not exist in the source snapshot. Any non-empty `diff -r` output or non-zero status is truncation, alteration, or an operational failure and FAILS the phase; a missing `diff -r` also FAILS the phase.
 
 The portable destination guard rejects a destination that already exists before either move attempt; it does not provide an atomic cross-process no-clobber guarantee. Do not add a suffix, overwrite, merge, delete, or otherwise choose a destination automatically.
 
@@ -306,10 +222,9 @@ mv "$nested_source" "$active_source"
 
 Never automatically delete, overwrite, or merge the outer archive directory. If the active source exists or is a symlink, the outer destination or nested source is not a real directory, or the shape is otherwise ambiguous, stop and resolve the paths manually. After the active source is restored and the collision is resolved, rerun this archive step.
 
-### Step 4: Verify Archive
+### Step 3: Verify Archive
 
-**IF mode is `openspec` or `hybrid`:** The Mechanical Copy Contract above is the verification: the verbatim `diff -r` output from Steps 2 and 3 MUST appear in the phase result, and an empty diff is the only passing evidence. In addition, confirm:
-- [ ] Main specs updated correctly
+**IF mode is `openspec` or `hybrid`:** The Mechanical Copy Contract above is the verification: the verbatim `diff -r` output from Step 2 MUST appear in the phase result, and an empty diff is the only passing evidence. In addition, confirm:
 - [ ] Change folder moved to archive
 - [ ] Archive contains all artifacts (proposal, specs, design, tasks)
 - [ ] Archived `tasks.md` has no unchecked implementation tasks, unless the orchestrator explicitly approved archive-time stale-checkbox reconciliation backed by apply-progress/verify-report proof
@@ -322,7 +237,7 @@ A failed or skipped `diff -r` FAILS the phase regardless of the checkboxes above
 
 **IF mode is `none`:** Skip verification — no persisted artifacts.
 
-### Step 5: Persist Archive Report
+### Step 4: Persist Archive Report
 
 **This step is MANDATORY — do NOT skip it.**
 
@@ -331,7 +246,7 @@ Follow **Section C** from `skills/_shared/sdd-phase-common.md`.
 - topic_key: `sdd/{change-name}/archive-report`
 - type: `architecture`
 
-### Step 6: Return Summary
+### Step 5: Return Summary
 
 Return to the orchestrator:
 
@@ -341,20 +256,11 @@ Return to the orchestrator:
 **Change**: {change-name}
 **Archived to**: `openspec/changes/archive/{YYYY-MM-DD}-{change-name}/` (openspec/hybrid) | Engram archive report (engram) | inline (none)
 
-### Specs Synced
-| Domain | Action | Details |
-|--------|--------|---------|
-| {domain} | Created/Updated | {N added, M modified, K removed requirements} |
-
 ### Archive Contents
 - proposal.md ✅
 - specs/ ✅
 - design.md ✅
 - tasks.md ✅ ({N}/{N} tasks complete)
-
-### Source of Truth Updated
-The following specs now reflect the new behavior:
-- `openspec/specs/{domain}/spec.md`
 
 ### SDD Cycle Complete
 The change has been fully planned, implemented, verified, and archived.
@@ -370,10 +276,7 @@ Ready for the next change.
 - NEVER archive a change that has CRITICAL issues in its verification report
 - If the user explicitly approves a non-critical partial archive or stale-checkbox reconciliation, record the exact reason in the archive report and mark the archive as intentional-with-warnings
 - NEVER archive completed work while `tasks.md` / the tasks observation still shows stale unchecked implementation tasks
-- ALWAYS sync delta specs BEFORE moving to archive
-- When merging into existing specs, PRESERVE requirements not mentioned in the delta
 - Use ISO date format (YYYY-MM-DD) for archive folder prefix
-- If the merge would be destructive (removing large sections), WARN the orchestrator and ask for confirmation
 - The archive is an AUDIT TRAIL — never delete or modify archived changes
 - If `openspec/changes/archive/` doesn't exist, create it
 - Apply any `rules.archive` from `openspec/config.yaml`
