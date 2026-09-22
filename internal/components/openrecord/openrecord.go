@@ -4,8 +4,10 @@
 package openrecord
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
@@ -61,8 +63,24 @@ func Install(homeDir string, selectedAgents []model.AgentID, runner communitytoo
 // same install/sync split ComponentEngram does — a sync refreshes managed
 // files, it does not provision the machine.
 func Sync(homeDir string, selectedAgents []model.AgentID, runner communitytool.Runner) (InstallResult, error) {
+	return SyncWithDetector(homeDir, selectedAgents, runner, communitytool.DetectorFunc(exec.LookPath))
+}
+
+// SyncWithDetector is Sync with the binary lookup injected. The availability
+// probe lives here rather than in the caller so that substituting this arm
+// substitutes the whole of it: a probe sitting in front of the seam leaves
+// every caller reaching for the machine even when the arm itself is stubbed.
+//
+// An absent binary is a hard failure, matching the doctor, which lists
+// openrecord in coreTools and FAILs without it. Sync provisions nothing, so
+// finding no binary here means `gentle-ai install` never ran or did not
+// finish; the error names the command that fixes it.
+func SyncWithDetector(homeDir string, selectedAgents []model.AgentID, runner communitytool.Runner, detector communitytool.Detector) (InstallResult, error) {
 	if runner == nil {
 		return InstallResult{}, fmt.Errorf("openrecord runner is not configured")
+	}
+	if DetectStatus(homeDir, detector, runner).CLI != communitytool.AvailabilityAvailable {
+		return InstallResult{}, errors.New("the openrecord binary is not installed, so its skills cannot be refreshed; run `gentle-ai install` to install it")
 	}
 	return EmitAndFanOut(homeDir, selectedAgents, runner)
 }

@@ -2784,6 +2784,9 @@ func mustWriteFile(t *testing.T, path string, data []byte) {
 // ─── Phase 4: RunSync integration tests ───────────────────────────────────
 
 func TestRunSyncAppliesManagedFilesystemChanges(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	pluginsDir := filepath.Join(home, ".config", "opencode", "plugins")
 	if err := os.MkdirAll(pluginsDir, 0o755); err != nil {
@@ -2867,6 +2870,9 @@ func TestRunSyncAppliesManagedFilesystemChanges(t *testing.T) {
 }
 
 func TestRunSyncDoesNotInvokeEngramSetup(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreCommand := runCommand
@@ -2899,6 +2905,9 @@ func TestRunSyncDoesNotInvokeEngramSetup(t *testing.T) {
 }
 
 func TestRunSyncDoesNotInstallBinaries(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreCommand := runCommand
@@ -2936,6 +2945,9 @@ func TestRunSyncDoesNotInstallBinaries(t *testing.T) {
 }
 
 func TestRunSyncPreservesUnmanagedAdjacentFiles(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 
 	// Create user-owned config file adjacent to managed overlay.
@@ -3019,6 +3031,9 @@ func TestRunSyncDryRunDoesNotWriteFiles(t *testing.T) {
 }
 
 func TestRunSyncIsIdempotent(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -3122,6 +3137,9 @@ func TestRunSyncNoOpWhenNoAgentsDiscovered(t *testing.T) {
 // TestRenderSyncReportIncludesManagedActions verifies that the sync output
 // reports the managed actions that were executed, not just verification results.
 func TestRenderSyncReportIncludesManagedActions(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -3167,6 +3185,9 @@ func TestRenderSyncReportIncludesManagedActions(t *testing.T) {
 // that is NOT part of the managed inventory (simulating an unmanaged lookalike).
 // After sync, the lookalike must remain byte-for-byte unchanged.
 func TestRunSyncExcludesUnmanagedLookalikeFile(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 
 	// Create a directory structure that is NOT the agent config dir.
@@ -3228,6 +3249,9 @@ func TestRunSyncExcludesUnmanagedLookalikeFile(t *testing.T) {
 // This is distinct from TestRunSyncNoOpWhenNoAgentsDiscovered: agents ARE
 // present, but all inject calls write nothing new (WriteFileAtomic is no-op).
 func TestRunSyncNoOpWhenAssetsAlreadyCurrent(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -3285,6 +3309,9 @@ func TestRunSyncNoOpWhenAssetsAlreadyCurrent(t *testing.T) {
 // On a fresh home, files are written so the count must be > 0.
 // On a second sync, nothing changes so the count must be 0.
 func TestSyncActionsExecutedReflectsChangedFiles(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -4179,7 +4206,10 @@ func TestRunSyncRestoresConfiguredSelectionAndExplicitOverrides(t *testing.T) {
 	osUserHomeDir = func() (string, error) { return home, nil }
 	t.Cleanup(func() { osUserHomeDir = original })
 	plain, err := RunSync([]string{"--dry-run"})
-	if err != nil || !reflect.DeepEqual(plain.Selection.Components, []model.ComponentID{model.ComponentEngram}) || !reflect.DeepEqual(plain.Selection.Skills, []model.SkillID{model.SkillCommentWriter}) || plain.Selection.Preset != model.PresetCustom {
+	// openrecord is force-added by RestorePersistedSelection: a state file
+	// written before it became a component would otherwise drop it on every
+	// sync, exactly as issue #3430 describes for ComponentSDD.
+	if err != nil || !reflect.DeepEqual(plain.Selection.Components, []model.ComponentID{model.ComponentEngram, model.ComponentOpenRecord}) || !reflect.DeepEqual(plain.Selection.Skills, []model.SkillID{model.SkillCommentWriter}) || plain.Selection.Preset != model.PresetCustom {
 		t.Fatalf("plain sync selection = %#v, err = %v", plain.Selection, err)
 	}
 	overridden, err := RunSync([]string{"--dry-run", "--skill", "sdd-init", "--sdd-mode", "multi", "--strict-tdd"})
@@ -4390,6 +4420,9 @@ func TestBuildSyncSelectionSDDProfileStrategyForwarded(t *testing.T) {
 // persisted list, dropping ComponentSDD, so the componentSyncStep that writes
 // profiles into opencode.json never runs — but the sync still exits 0.
 func TestRunSyncProfilePersistsWhenSDDComponentMissingFromState(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -4450,6 +4483,9 @@ func TestRunSyncProfilePersistsWhenSDDComponentMissingFromState(t *testing.T) {
 // ComponentSDD when the caller explicitly asked for profile or model
 // assignment work, not on every sync.
 func TestRunSyncPlainSyncHonoursPersistedComponentsWithoutProfile(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -4493,6 +4529,9 @@ func TestRunSyncPlainSyncHonoursPersistedComponentsWithoutProfile(t *testing.T) 
 // the selection with the persisted assignments rather than falling back to the
 // "balanced" preset defaults.
 func TestRunSyncLoadsPersistedModelAssignments(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -4603,6 +4642,9 @@ func TestRunSyncLoadsPersistedModelAssignmentsPreservesEffort(t *testing.T) {
 // full cycle: sync1 loads persisted assignments → sync2 still has them.
 // This is the core promise of the fix.
 func TestRunSyncDoesNotOverridePersistedAssignmentsOnSecondSync(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -4673,6 +4715,9 @@ func TestRunSyncDoesNotOverridePersistedAssignmentsOnSecondSync(t *testing.T) {
 // TestRunSyncWithNoPersistedAssignmentsDoesNotPanic verifies graceful behavior
 // when state.json has no model assignments (backward compat with old state).
 func TestRunSyncWithNoPersistedAssignmentsDoesNotPanic(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	restoreHome := osUserHomeDir
 	restoreBackupHome := backup.UserHomeDirFn
@@ -4987,6 +5032,9 @@ func TestBackupTargetsCaptureBothManagedOutputStyles(t *testing.T) {
 // when an old persona block lives between markers, sync replaces it with the
 // embedded asset for the current version.
 func TestRunSyncRegeneratesPersonaBlockBetweenMarkers(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	setSyncTestHome(t, home)
 
@@ -5033,6 +5081,9 @@ func TestRunSyncRegeneratesPersonaBlockBetweenMarkers(t *testing.T) {
 // TestRunSyncReadsPersonaFromState verifies that sync uses the persona the
 // user installed (from state.json) rather than always defaulting to Gentleman.
 func TestRunSyncReadsPersonaFromState(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	setSyncTestHome(t, home)
 
@@ -5059,6 +5110,9 @@ func TestRunSyncReadsPersonaFromState(t *testing.T) {
 // state resolves to neutral/default-safe behavior instead of reactivating
 // Gentleman regional voice.
 func TestRunSyncFallsBackToNeutralWhenStateLacksPersona(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	home := t.TempDir()
 	setSyncTestHome(t, home)
 
@@ -5926,6 +5980,9 @@ func setupCodexSyncHomeWithPhaseModels(t *testing.T, carrilModels map[string]str
 }
 
 func TestRunSync_RestoresCodexCarrilAssignments(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	restoreHome := osUserHomeDir
 	restoreCommand := runCommand
 	restoreLookPath := cmdLookPath
@@ -6003,6 +6060,9 @@ func TestRunSync_RestoresCodexCarrilAssignments(t *testing.T) {
 }
 
 func TestRunSyncPreservesCompletePersistedState(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	t.Cleanup(codex.SetRuntimeVersionCommandForTest("codex-cli 0.144.0", nil))
 	home := t.TempDir()
 	lastUpdate := time.Date(2026, time.July, 11, 12, 0, 0, 0, time.UTC)
@@ -6075,6 +6135,9 @@ func TestRunSyncPreservesCompletePersistedState(t *testing.T) {
 // CodexModelAssignments (phase→effort) from state.json and writes them to
 // profile files.
 func TestRunSync_RestoresCodexEffortAssignments(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	efforts := map[string]string{
 		"sdd-propose": "xhigh", "sdd-design": "xhigh", "sdd-verify": "xhigh",
 		"jd-judge-a": "xhigh", "jd-judge-b": "xhigh", "default": "xhigh",
@@ -6117,6 +6180,9 @@ func TestRunSync_RestoresCodexEffortAssignments(t *testing.T) {
 // `gentle-ai sync` preserves Custom per-phase Codex model assignments from
 // state.json and renders the per-phase model table into AGENTS.md.
 func TestRunSync_RestoresCodexPhaseModelAssignments(t *testing.T) {
+	// This test is about sync, not openrecord: neutralize its arms so the
+	// openrecord step neither shells out nor depends on a staged emit.
+	stubOpenRecordArms(t)
 	efforts := map[string]string{
 		"sdd-propose": "xhigh", "sdd-design": "xhigh", "sdd-verify": "xhigh",
 		"jd-judge-a": "xhigh", "jd-judge-b": "xhigh", "default": "xhigh",

@@ -66,20 +66,20 @@ func stageOpenRecordEmit(t *testing.T, binaryOnPath bool) *[][]string {
 // Nothing else in this package's sync path reaches runCommand or cmdLookPath,
 // so the substitution is invisible to whatever the calling test asserts.
 func neutralizeOpenRecordArms() func() {
-	previousRun, previousLookPath := runCommand, cmdLookPath
+	// Only the two arms. The availability probe lives behind the seam now, so
+	// substituting them neutralizes openrecord completely — touching
+	// runCommand or cmdLookPath here would instead overwrite whatever the
+	// calling test set up for its own subject.
 	previousInstall, previousSync := installOpenRecordWithHome, syncOpenRecordWithHome
 
-	cmdLookPath = func(name string) (string, error) { return filepath.Join("/usr/bin", name), nil }
-	runCommand = func(string, ...string) error { return nil }
 	installOpenRecordWithHome = func(_ string, agents []model.AgentID, _ communitytool.Runner, _ communitytool.Detector) (openrecord.InstallResult, error) {
 		return openrecord.InstallResult{FannedOut: len(agents)}, nil
 	}
-	syncOpenRecordWithHome = func(_ string, agents []model.AgentID, _ communitytool.Runner) (openrecord.InstallResult, error) {
+	syncOpenRecordWithHome = func(_ string, agents []model.AgentID, _ communitytool.Runner, _ communitytool.Detector) (openrecord.InstallResult, error) {
 		return openrecord.InstallResult{FannedOut: len(agents)}, nil
 	}
 
 	return func() {
-		runCommand, cmdLookPath = previousRun, previousLookPath
 		installOpenRecordWithHome, syncOpenRecordWithHome = previousInstall, previousSync
 	}
 }
@@ -728,7 +728,7 @@ func TestComponentSyncStepOpenRecordGoesThroughTheSyncSeam(t *testing.T) {
 	calls := stageOpenRecordEmit(t, true)
 
 	var called bool
-	syncOpenRecordWithHome = func(string, []model.AgentID, communitytool.Runner) (openrecord.InstallResult, error) {
+	syncOpenRecordWithHome = func(string, []model.AgentID, communitytool.Runner, communitytool.Detector) (openrecord.InstallResult, error) {
 		called = true
 		return openrecord.InstallResult{FannedOut: 1}, nil
 	}

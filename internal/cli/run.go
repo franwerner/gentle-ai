@@ -83,7 +83,7 @@ var (
 	// into its home on a machine that has openrecord, and going to the network
 	// for `go install` on one that does not.
 	installOpenRecordWithHome = openrecord.Install
-	syncOpenRecordWithHome    = openrecord.Sync
+	syncOpenRecordWithHome    = openrecord.SyncWithDetector
 
 	injectSDD      = sdd.Inject
 	pathEnvEntries = func(profile system.PlatformProfile) []string {

@@ -26,7 +26,6 @@ import (
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/gga"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/mcp"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/opencodeplugin"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/openrecord"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/permissions"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/persona"
 	"github.com/gentleman-programming/gentle-ai/v2/internal/components/sdd"
@@ -1085,11 +1084,12 @@ func (s componentSyncStep) Run() error {
 		// called it fine. Sync provisions nothing, so finding no binary here
 		// means `gentle-ai install` never ran or did not finish; that is a
 		// broken install, and the error names the command that fixes it.
-		runner := communitytool.RunnerFunc(runCommand)
-		if openrecord.DetectStatus(s.homeDir, communitytool.DetectorFunc(cmdLookPath), runner).CLI != communitytool.AvailabilityAvailable {
-			return errors.New("sync openrecord: the openrecord binary is not installed, so its skills cannot be refreshed; run `gentle-ai install` to install it")
-		}
-		result, err := syncOpenRecordWithHome(s.homeDir, s.agents, runner)
+		//
+		// The availability probe belongs behind the seam, not in front of it:
+		// a probe upstream of syncOpenRecordWithHome means substituting the arm
+		// does not neutralize it, and every test that is about sync rather than
+		// about openrecord still reaches for the machine.
+		result, err := syncOpenRecordWithHome(s.homeDir, s.agents, communitytool.RunnerFunc(runCommand), communitytool.DetectorFunc(cmdLookPath))
 		if err != nil {
 			return fmt.Errorf("sync openrecord: %w", err)
 		}
