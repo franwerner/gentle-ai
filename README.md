@@ -836,6 +836,7 @@ Run `gentle-ai help` for the complete surface, including SDD orchestration and r
 | Configure OpenCode phase models | [OpenCode SDD Profiles](docs/opencode-profiles.md) |
 | Review or deliver a change safely | [Review Integration Contract](docs/review-integration.md), [Review Authority Threat Model](docs/review-authority-threat-model.md), and [Chapter 21 — Verifiable Trust](https://the-amazing-gentleman-programming-book.vercel.app/en/book/Chapter21_Verifiable-Trust) |
 | Find or share persistent context | [Engram Commands](docs/engram.md) |
+| Understand what governs a change | [openrecord inside Gentle AI](docs/openrecord.md) |
 | Refresh or troubleshoot an installation | [Usage](docs/usage.md), [Backup & Rollback](docs/rollback.md), and [Platforms](docs/platforms.md) |
 | Extend or contribute to Gentle AI | [Codebase Guide](docs/CODEBASE-GUIDE.md), [Components, Skills & Presets](docs/components.md), [Skill Registry](docs/skill-registry.md), and [Architecture & Development](docs/architecture.md) |
 | Understand how agent behavior is tested | [Testing Agents Deterministically](docs/testing-agents-deterministically.md) |
