@@ -74,6 +74,7 @@ The orchestrator should provide structured status from `skills/_shared/sdd-statu
 | Test command exits non-zero | CRITICAL. |
 | Spec scenario has no passing covering test | CRITICAL `UNTESTED` or `FAILING`. |
 | Design deviation exists | WARNING unless it breaks a spec. |
+| The design proposed decisions and apply materialized none | CRITICAL. The reasoning exists in one place that was never written; apply naming the skip does not close it. |
 
 ## Execution Steps
 

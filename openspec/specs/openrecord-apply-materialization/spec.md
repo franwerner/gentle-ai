@@ -20,7 +20,7 @@ earlier batch writes nothing and reports nothing about it.
 
 #### Scenario: A single batch clears every task
 
-- GIVEN a change under `recordStore.resolved: openrecord` whose design carries two `## Architecture Decisions` entries
+- GIVEN a change whose design carries two `## Architecture Decisions` entries
 - WHEN an `applyState: ready` run completes every pending task in the tasks artifact
 - THEN both decisions MUST be written as records before the run returns
 - AND the write MUST happen after the tasks are marked complete, not during the per-task loop
@@ -39,12 +39,12 @@ earlier batch writes nothing and reports nothing about it.
 - THEN it MUST return without editing, exactly as the shipped gate already requires
 - AND no record MUST be written on that path
 
-#### Scenario: The record store is not openrecord
+#### Scenario: Nothing about the record store gates the step
 
-- GIVEN a project whose status reports no `recordStore.resolved: openrecord`
-- WHEN apply runs to completion
-- THEN the materialization step MUST NOT run
-- AND nothing about records MUST appear in the return
+- GIVEN openrecord is installed unconditionally, so no project can report a different record store
+- WHEN apply reaches the step
+- THEN the only condition governing whether it runs MUST be whether the batch leaves a pending task
+- AND the step MUST NOT consult a config key, a status field, or an injected value to decide
 
 ### Requirement: The design-to-record mapping is fixed, and stated in record-field terms only
 
@@ -129,16 +129,17 @@ which already instructs it before a write; apply proceeds through it and writes 
 - THEN it MUST create the level through the mechanic the emitted capture skill documents and write the record
 - AND it MUST NOT report this as an issue or a skip
 
-### Requirement: A declared-but-absent store produces a named skip, never a bootstrap and never a silent drop
+### Requirement: A store that is not on disk produces a named skip, never a bootstrap and never a silent drop
 
-When a project declares openrecord as its record store and no store exists on disk, apply MUST skip
-materialization, MUST name the skip in the existing `### Issues Found` section of its return, and MUST
-complete the batch. It MUST NOT create a store, and it MUST NOT pass over the skip in silence. The
-task's code is unaffected.
+When no store exists on disk, apply MUST skip materialization, MUST name the skip in the existing
+`### Issues Found` section of its return, and MUST complete the batch. It MUST NOT create a store, and
+it MUST NOT pass over the skip in silence. The task's code is unaffected.
 
-#### Scenario: The store is declared but absent
+There is no declaration left for this case to turn on: openrecord is installed unconditionally, so an
+absent store is a project that has not been set up rather than one that opted out, and the named skip
+is the only thing that tells anyone which.
 
-- GIVEN `recordStore.resolved: openrecord` and no store on disk
+#### Scenario: The store is absent
 - WHEN the batch that would materialize reaches the step
 - THEN it MUST write no record and create no store
 - AND it MUST name the skip in `### Issues Found` and finish the batch with its code work intact
@@ -191,8 +192,8 @@ extending it with reasons the design never gave.
 
 `internal/assets/skills/sdd-apply/SKILL.md` MUST still carry **exactly one** literal
 `openrecord-convention.md` citation after this change — the one it already has — so the procedural cue
-this change adds MUST reuse it rather than add a second. `<--:openrecord-->` delimiters MUST stay
-balanced. The model-small tier of that file MUST be byte-for-byte unchanged, because it carries no
+this change adds MUST reuse it rather than add a second. The model-small tier of that file MUST be
+byte-for-byte unchanged, because it carries no
 openrecord participation today and the pin counts citations over the whole file.
 
 #### Scenario: The pointer pin passes unchanged

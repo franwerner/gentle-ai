@@ -174,18 +174,17 @@ and MUST contain no reference to a section this change deletes. Exactly two cell
 - THEN each MUST be byte-for-byte identical
 - AND the `sdd-propose` / `sdd-spec` "check below" wording MUST stay valid because the contradiction contract stays in place
 
-### Requirement: Guard surfaces and the delimiter pair are untouched
+### Requirement: The contradiction contract survives; the activation gate and its delimiter do not
 
-`## Activation — declared, never presence-detected` (L8-21) and `## When your work contradicts an
-accepted record` (L141-176) MUST survive byte-for-byte. The file MUST keep exactly one balanced
-`<--:openrecord-->` / `<--:/openrecord-->` pair, open before close.
+`## When your work contradicts an accepted record` MUST survive byte-for-byte: no emitted skill carries
+it, so this file is its only home.
 
-#### Scenario: The registered guard surface is unchanged
-
-- GIVEN `store_fact_asymmetry_test.go` registers the `## Activation` section as the `activation` surface, extracted by heading and cut at the next `## `
-- WHEN the post-change file is extracted the same way
-- THEN the extracted text MUST be byte-for-byte identical to the pre-change extraction
-- AND its C1 / C2 / C3c checks MUST pass with no edit to that test file
+The activation section MUST NOT survive as written. openrecord is installed unconditionally, so a
+section describing when the convention applies describes a choice nobody makes: it MUST state that the
+convention always applies and that there is no axis, no config key and no status field to consult
+before acting on the file. The `<--:openrecord-->` / `<--:/openrecord-->` pair MUST be gone — those
+markers were never processed by anything, so they shipped verbatim into every installed skill file, and
+a conditional wrapper around unconditional behaviour is a lie the reader has no way to detect.
 
 #### Scenario: The contradiction contract is unchanged
 
@@ -193,12 +192,26 @@ accepted record` (L141-176) MUST survive byte-for-byte. The file MUST keep exact
 - WHEN it is compared against the pre-change file
 - THEN it MUST be byte-for-byte identical
 
-#### Scenario: Both test files pass with zero edits
+#### Scenario: The activation section states that there is nothing to resolve
 
-- GIVEN `internal/assets/openrecord_pointer_test.go` and `internal/assets/store_fact_asymmetry_test.go` as they stand on `feat/recordstore-test-defect-closure`
-- WHEN `go test ./internal/assets/...` runs after the change
-- THEN it MUST pass
-- AND neither test file MUST have been edited
+- GIVEN the section that used to gate this convention on a declared record store
+- WHEN it is read after the change
+- THEN it MUST NOT name a config key, a status field, or an injected value to read before acting
+- AND it MUST NOT describe any behaviour for a state in which the convention does not apply
+
+#### Scenario: No conditional wrapper survives anywhere in the embedded tree
+
+- GIVEN the `<--:openrecord-->` and `<--:/openrecord-->` markers
+- WHEN every file in the embedded asset tree is scanned, not only the registered surfaces
+- THEN neither marker MUST appear in any of them
+
+#### Scenario: The guard tests are reconverted rather than retired
+
+- GIVEN `internal/assets/store_fact_asymmetry_test.go` and `internal/components/engram/recordstore_carveout_test.go`, which existed to verify the record store travelled as an injected fact
+- WHEN the axis they guarded is removed
+- THEN each MUST still assert that the substantive passages are present
+- AND each MUST fail if a conditional wrapper or an axis lookup is reintroduced
+- AND each MUST fail if a passage it protects is deleted, proven by a mutation rather than by inspection
 
 ### Requirement: The pointer paths resolve to what the fan-out actually writes
 

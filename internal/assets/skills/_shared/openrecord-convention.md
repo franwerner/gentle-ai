@@ -43,6 +43,25 @@ copy cannot fall out of step with the binary.
 If that file is not there for you, say so and stop the consult, per the preamble — do not improvise the
 walk.
 
+## A record that is `pending` settles nothing
+
+`accepted` is what a record reaches because a person put it there. `pending` is the other thing
+entirely: someone left that question open, deliberately, and said so.
+
+So a pending record constrains nothing — and it authorises nothing either. Reading one as "the
+question is open, so I get to choose" invents a mandate nobody granted, and it is a tempting reading
+precisely because a pending record looks like an invitation. It is a record of an open question, not
+of a delegation.
+
+When your work depends on a pending question being settled, say that out loud rather than settling it
+in passing. The person reading your return is the one who left it open; that it now blocks something
+is exactly what they need to hear, and it is more useful to them than a choice made on their behalf
+and reported afterwards.
+
+This is not the contradiction contract below, and does not fire it: nothing is being contradicted.
+A pending record is not an obstacle you have to route around — it is a question with your work now
+attached to it.
+
 ## When your work contradicts an accepted record
 
 This is the one thing that stops.
@@ -156,6 +175,12 @@ later batch owning the write is the normal case, not an issue.
 name the skip in the `### Issues Found` section the return already carries, and finish the batch: the
 task's code is unaffected. Do not let the skip pass in silence either. A project whose record store is
 missing is a configuration defect.
+
+That line is where the skip is **named**, not where it is **caught**. `### Issues Found` gates nothing,
+so a skip reported only there repeats every run while the reasoning it dropped stays in one place that
+was never written. `sdd-verify` is what catches it: a design carrying `## Architecture Decisions`
+entries whose reasoning reached no record is a CRITICAL finding there, not a note. Apply reports;
+verify escalates.
 
 **After a record exists, the design artifact stops carrying its reasoning.** `sdd-design` writes each
 decision's `**Choice**`, `**Alternatives considered**` and `**Rationale**` in full, and must keep doing
