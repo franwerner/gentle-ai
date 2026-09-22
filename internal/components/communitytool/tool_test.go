@@ -33,6 +33,12 @@ func TestMain(m *testing.M) {
 		return "/bin", nil
 	}
 	codeGraphCLIUsable = func(string) bool { return true }
+	// Reconciling CodeGraph for Pi is gated on the binary, not on the agent
+	// directory: a directory an uninstall left behind is not an install and
+	// cannot be wired. Every fixture here that builds a ~/.pi/agent tree means an
+	// installed Pi, so that is this package's default; the orphan-directory test
+	// overrides it locally.
+	piBinaryLookPath = func(string) (string, error) { return "/usr/bin/pi", nil }
 	piCodeGraphEffectiveMCPProbe = func(string) (PiCodeGraphMCPProbeResult, error) {
 		return PiCodeGraphMCPProbeResult{
 			AdapterAvailable: true,

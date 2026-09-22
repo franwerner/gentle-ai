@@ -280,12 +280,24 @@ func codeGraphCanRepairWithoutFullInstall(homeDir string, status Status) bool {
 	return foundMissing
 }
 
+// piBinaryLookPath resolves the Pi CLI, overridable in tests.
+var piBinaryLookPath = exec.LookPath
+
 func reconcileDetectedPiCodeGraph(homeDir, workspaceDir string) (*PiCodeGraphResult, error) {
 	paths := piagent.CodeGraphPaths(homeDir)
 	if _, err := os.Stat(paths.AgentDir); os.IsNotExist(err) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
+	}
+	// The agent directory alone does not mean Pi is installed — an uninstall can
+	// leave it behind. Wiring CodeGraph into an agent that is not there cannot
+	// succeed: the MCP capability probe needs Pi's own adapter extension, which
+	// only a real install provides, and its failure took the whole CodeGraph
+	// step down with it. The Pi adapter already separates these two facts; this
+	// is the same distinction, read the same way.
+	if path, err := piBinaryLookPath("pi"); err != nil || strings.TrimSpace(path) == "" {
+		return nil, nil
 	}
 	result, err := ReconcilePiCodeGraph(PiCodeGraphOptions{HomeDir: homeDir, WorkspaceDir: workspaceDir, Selected: true})
 	result, err = PreservePiCodeGraphPending(result, err)
