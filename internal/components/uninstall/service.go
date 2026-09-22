@@ -1042,6 +1042,13 @@ func (s *Service) componentOperations(adapter agents.Adapter, componentID model.
 			for _, path := range openrecord.UninstallTargets(skillDir) {
 				targets = append(targets, path)
 				ops = append(ops, removeFile(path))
+				// Each emitted skill lives in its own directory. UninstallTargets
+				// reports files only — deliberately, so gentle-ai never guesses at
+				// what openrecord ships — so the now-empty directory is the
+				// service's to drop, the same way it drops the skills root below.
+				if parent := filepath.Dir(path); parent != skillDir {
+					ops = append(ops, removeDirIfEmpty(parent))
+				}
 			}
 			ops = append(ops, removeDirIfEmpty(skillDir))
 		}
