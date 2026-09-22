@@ -14,18 +14,21 @@ import (
 )
 
 // TestPartialUninstallCommitsSucceededAgentsWhenAnotherAgentFails reproduces
-// the reporter's batch: two managed agents, one of whose settings files is not
-// JSON, uninstalled in a single invocation. The batch must not abandon the
+// the reporter's batch: two managed agents, one of whose settings files cannot
+// be parsed, uninstalled in a single invocation. The batch must not abandon the
 // remaining agent, and the state file it leaves behind must describe the disk.
+//
+// The malformed file is Claude's settings.json. It used to be Hermes's
+// config.yaml, which failed because the uninstaller parsed that YAML as JSON —
+// a defect, not a fixture. With that fixed, a file whose contents genuinely do
+// not match its format is what still fails.
 func TestPartialUninstallCommitsSucceededAgentsWhenAnotherAgentFails(t *testing.T) {
 	home := t.TempDir()
 	claudeSettings := filepath.Join(home, ".claude", "settings.json")
-	hermesConfig := filepath.Join(home, ".hermes", "config.yaml")
 	hermesSoul := filepath.Join(home, ".hermes", "SOUL.md")
 
-	writeBatchFile(t, claudeSettings, `{"theme":"gentleman","outputStyle":"gentleman","env":{"MY_VAR":"1"}}`)
-	writeBatchFile(t, hermesConfig, "providers:\n  - name: hermes\n")
-	writeBatchFile(t, hermesSoul, "<!-- gentle-ai:persona -->\nmanaged\n<!-- /gentle-ai:persona -->\n")
+	writeBatchFile(t, claudeSettings, "not json at all\n")
+	writeBatchFile(t, hermesSoul, "keep me\n<!-- gentle-ai:persona -->\nmanaged\n<!-- /gentle-ai:persona -->\n")
 	if err := state.Write(home, state.InstallState{InstalledAgents: []string{"claude-code", "hermes"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -38,39 +41,39 @@ func TestPartialUninstallCommitsSucceededAgentsWhenAnotherAgentFails(t *testing.
 
 	result, err := svc.PartialUninstall([]model.AgentID{model.AgentClaudeCode, model.AgentHermes}, nil)
 	if err == nil {
-		t.Fatal("PartialUninstall() error = nil, want the hermes cleanup failure surfaced")
+		t.Fatal("PartialUninstall() error = nil, want the claude cleanup failure surfaced")
 	}
-	if want := fmt.Sprintf("%q", hermesConfig); !strings.Contains(err.Error(), want) {
+	if want := fmt.Sprintf("%q", claudeSettings); !strings.Contains(err.Error(), want) {
 		t.Fatalf("PartialUninstall() error = %v, want it to name the representation %s", err, want)
 	}
 
-	if !slices.Equal(result.FailedAgents, []model.AgentID{model.AgentHermes}) {
-		t.Fatalf("FailedAgents = %v, want [hermes]", result.FailedAgents)
+	if !slices.Equal(result.FailedAgents, []model.AgentID{model.AgentClaudeCode}) {
+		t.Fatalf("FailedAgents = %v, want [claude-code]", result.FailedAgents)
 	}
-	if !slices.Equal(result.AgentsRemovedFromState, []model.AgentID{model.AgentClaudeCode}) {
-		t.Fatalf("AgentsRemovedFromState = %v, want [claude-code]", result.AgentsRemovedFromState)
+	if !slices.Equal(result.AgentsRemovedFromState, []model.AgentID{model.AgentHermes}) {
+		t.Fatalf("AgentsRemovedFromState = %v, want [hermes]", result.AgentsRemovedFromState)
 	}
 
-	// The report must describe the disk: the succeeded agent's managed keys are
+	// The report must describe the disk: the succeeded agent's managed content is
 	// gone, so it commits; the failed agent stays recorded as installed.
 	current, err := state.Read(home)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(current.InstalledAgents, []string{"hermes"}) {
+	if !slices.Equal(current.InstalledAgents, []string{"claude-code"}) {
 		t.Fatalf("state.json installed_agents = %v, want only the agent that failed", current.InstalledAgents)
 	}
 
-	settings := string(mustReadServiceFile(t, claudeSettings))
-	if strings.Contains(settings, "theme") || strings.Contains(settings, "outputStyle") {
-		t.Fatalf("claude settings = %s, want managed keys removed: the batch must not abandon later agents", settings)
+	soul := string(mustReadServiceFile(t, hermesSoul))
+	if strings.Contains(soul, "gentle-ai:persona") {
+		t.Fatalf("hermes SOUL.md = %s, want the managed section removed: the batch must not abandon later agents", soul)
 	}
-	if !strings.Contains(settings, "MY_VAR") {
-		t.Fatalf("claude settings = %s, want the user-owned key preserved", settings)
+	if !strings.Contains(soul, "keep me") {
+		t.Fatalf("hermes SOUL.md = %s, want the user-owned content preserved", soul)
 	}
 
 	if !slices.ContainsFunc(result.ManualActions, func(action string) bool {
-		return strings.Contains(action, "hermes") && strings.Contains(action, hermesConfig)
+		return strings.Contains(action, "claude-code") && strings.Contains(action, claudeSettings)
 	}) {
 		t.Fatalf("ManualActions = %v, want the failed agent and its path reported", result.ManualActions)
 	}
@@ -196,9 +199,12 @@ func TestBuildPlanAttributesOperationsToTheAgentsThatContributedThem(t *testing.
 	}
 
 	claudeSettings := filepath.Join(home, ".claude", "settings.json")
-	hermesConfig := filepath.Join(home, ".hermes", "config.yaml")
+	// Hermes contributes its system prompt, not its config.yaml: install writes
+	// no theme or outputStyle into a YAML settings file, so the uninstaller emits
+	// no operation against one.
+	hermesSoul := filepath.Join(home, ".hermes", "SOUL.md")
 	assertOperationAgents(t, built, claudeSettings, []model.AgentID{model.AgentClaudeCode})
-	assertOperationAgents(t, built, hermesConfig, []model.AgentID{model.AgentHermes})
+	assertOperationAgents(t, built, hermesSoul, []model.AgentID{model.AgentHermes})
 }
 
 func assertOperationAgents(t *testing.T, built plan, path string, want []model.AgentID) {

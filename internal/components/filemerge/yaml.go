@@ -420,3 +420,112 @@ func ReadYAMLMCPServerCommand(content string, serverID string) (string, bool) {
 
 	return "", false
 }
+
+// RemoveYAMLMCPServerBlock deletes a named MCP server block from a YAML config,
+// returning the updated content and whether anything changed. It is the removal
+// counterpart of UpsertYAMLMCPServerBlock: install writes these blocks, and
+// without this the uninstaller has no way to take them back out, so gentle-ai's
+// own entries outlive the uninstall in the user's file.
+//
+// It uses the same hand-rolled block scanning as ReadYAMLMCPServerCommand (NO
+// gopkg.in/yaml.v3), so a config carrying unrelated user keys — plugins, hooks,
+// anything — is preserved byte for byte outside the removed block.
+//
+// When the removed server was the last child of mcp_servers:, the now-childless
+// mcp_servers: key is removed too; an empty mapping key left behind is not YAML
+// gentle-ai wrote and not a shape the Upsert helpers produce.
+func RemoveYAMLMCPServerBlock(content, serverID string) (string, bool) {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+
+	mcpLineIdx := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "mcp_servers:") && !hasLeadingSpaces(line) {
+			rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "mcp_servers:"))
+			if rest == "" || strings.HasPrefix(rest, "#") {
+				mcpLineIdx = i
+				break
+			}
+		}
+	}
+	if mcpLineIdx == -1 {
+		return content, false
+	}
+
+	regionEnd := len(lines)
+	for i := mcpLineIdx + 1; i < len(lines); i++ {
+		line := lines[i]
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if !hasLeadingSpaces(line) {
+			regionEnd = i
+			break
+		}
+	}
+
+	serverKey := "  " + serverID + ":"
+	serverLineIdx := -1
+	for i := mcpLineIdx + 1; i < regionEnd; i++ {
+		line := lines[i]
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if isServerKeyLine(line, serverKey) {
+			serverLineIdx = i
+			break
+		}
+	}
+	if serverLineIdx == -1 {
+		return content, false
+	}
+
+	// The block ends at the next 2-space sibling key or at the end of the region.
+	blockEnd := regionEnd
+	for i := serverLineIdx + 1; i < regionEnd; i++ {
+		line := lines[i]
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if len(line) > 2 && line[:2] == "  " && line[2] != ' ' {
+			blockEnd = i
+			break
+		}
+	}
+
+	kept := append([]string{}, lines[:serverLineIdx]...)
+	kept = append(kept, lines[blockEnd:]...)
+
+	// Drop mcp_servers: when the block just removed was its last child.
+	if !yamlMappingHasChild(kept, mcpLineIdx) {
+		withoutKey := append([]string{}, kept[:mcpLineIdx]...)
+		withoutKey = append(withoutKey, kept[mcpLineIdx+1:]...)
+		kept = withoutKey
+	}
+
+	return strings.Join(kept, "\n"), true
+}
+
+// yamlMappingHasChild reports whether the mapping key at keyIdx still has at
+// least one indented child line before the next zero-indent key or EOF.
+func yamlMappingHasChild(lines []string, keyIdx int) bool {
+	for i := keyIdx + 1; i < len(lines); i++ {
+		line := lines[i]
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if !hasLeadingSpaces(line) {
+			return false
+		}
+		return true
+	}
+	return false
+}

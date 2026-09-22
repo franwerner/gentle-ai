@@ -806,6 +806,9 @@ func (s *Service) componentOperations(adapter agents.Adapter, componentID model.
 			ops = append(ops, removeDirIfEmpty(adapter.OutputStyleDir(homeDir)))
 		}
 		for _, path := range settingsTargets(homeDir, adapter) {
+			if usesYAMLSettings(adapter) {
+				continue
+			}
 			targets = append(targets, path)
 			jsonPaths := []jsonPath{{"outputStyle"}}
 			if adapter.Agent() == model.AgentOpenCode {
@@ -837,6 +840,9 @@ func (s *Service) componentOperations(adapter agents.Adapter, componentID model.
 		}
 	case model.ComponentPermission:
 		for _, path := range settingsTargets(homeDir, adapter) {
+			if usesYAMLSettings(adapter) {
+				continue
+			}
 			targets = append(targets, path)
 			switch adapter.Agent() {
 			case model.AgentClaudeCode:
@@ -851,6 +857,9 @@ func (s *Service) componentOperations(adapter agents.Adapter, componentID model.
 		}
 	case model.ComponentTheme:
 		for _, path := range settingsTargets(homeDir, adapter) {
+			if usesYAMLSettings(adapter) {
+				continue
+			}
 			targets = append(targets, path)
 			ops = append(ops, rewriteJSONFile(path, jsonPath{"theme"}))
 		}
@@ -1056,6 +1065,8 @@ func context7Targets(adapter agents.Adapter, homeDir string) []string {
 			return []string{claude.UserConfigPath(homeDir), adapter.SettingsPath(homeDir), adapter.MCPConfigPath(homeDir, "context7")}
 		}
 		return []string{adapter.MCPConfigPath(homeDir, "context7")}
+	case model.StrategyMergeIntoYAML:
+		return settingsTargets(homeDir, adapter)
 	case model.StrategyMergeIntoSettings, model.StrategyMCPConfigFile:
 		if adapter.Agent() == model.AgentOpenCode {
 			return settingsTargets(homeDir, adapter)
@@ -1085,6 +1096,12 @@ func context7Operations(adapter agents.Adapter, homeDir string) []operation {
 		}
 		path := adapter.SettingsPath(homeDir)
 		return []operation{rewriteJSONFile(path, jsonPath{"mcpServers", "context7"})}
+	case model.StrategyMergeIntoYAML:
+		ops := make([]operation, 0, 1)
+		for _, path := range settingsTargets(homeDir, adapter) {
+			ops = append(ops, rewriteYAMLMCPServers(path, "context7"))
+		}
+		return ops
 	case model.StrategyMCPConfigFile:
 		path := adapter.MCPConfigPath(homeDir, "context7")
 		switch adapter.Agent() {
@@ -1109,6 +1126,8 @@ func engramTargets(adapter agents.Adapter, homeDir string) []string {
 		}
 		targets = append(targets, adapter.MCPConfigPath(homeDir, "engram"))
 	case model.StrategyMergeIntoSettings:
+		targets = append(targets, settingsTargets(homeDir, adapter)...)
+	case model.StrategyMergeIntoYAML:
 		targets = append(targets, settingsTargets(homeDir, adapter)...)
 	case model.StrategyMCPConfigFile:
 		targets = append(targets, adapter.MCPConfigPath(homeDir, "engram"))
@@ -1140,6 +1159,12 @@ func engramOperations(adapter agents.Adapter, homeDir string) []operation {
 		}
 		path := adapter.SettingsPath(homeDir)
 		return []operation{rewriteJSONFile(path, jsonPath{"mcpServers", "engram"})}
+	case model.StrategyMergeIntoYAML:
+		ops := make([]operation, 0, 1)
+		for _, path := range settingsTargets(homeDir, adapter) {
+			ops = append(ops, rewriteYAMLMCPServers(path, "engram"))
+		}
+		return ops
 	case model.StrategyMCPConfigFile:
 		path := adapter.MCPConfigPath(homeDir, "engram")
 		if adapter.Agent() == model.AgentVSCodeCopilot {
@@ -1159,6 +1184,32 @@ func engramOperations(adapter agents.Adapter, homeDir string) []operation {
 	default:
 		return nil
 	}
+}
+
+// usesYAMLSettings reports whether the adapter's settings file is YAML rather
+// than JSON. The JSON rewrite operations below unmarshal what they read, so a
+// YAML settings path handed to one of them fails the whole uninstall — and the
+// components that reach for settingsTargets (persona, permissions, theme) write
+// nothing into a YAML config in the first place.
+func usesYAMLSettings(adapter agents.Adapter) bool {
+	return adapter.MCPStrategy() == model.StrategyMergeIntoYAML
+}
+
+// rewriteYAMLMCPServers removes the named MCP server blocks gentle-ai wrote into
+// a YAML config. Install puts them there through filemerge's Upsert helpers;
+// without the counterpart here they outlive the uninstall in the user's file.
+func rewriteYAMLMCPServers(path string, serverIDs ...string) operation {
+	return rewriteMarkdownFile(path, func(content string) (string, bool) {
+		changed := false
+		for _, id := range serverIDs {
+			updated, removed := filemerge.RemoveYAMLMCPServerBlock(content, id)
+			if removed {
+				content = updated
+				changed = true
+			}
+		}
+		return content, changed
+	})
 }
 
 func rewriteMarkdownFile(path string, mutate func(content string) (string, bool)) operation {
