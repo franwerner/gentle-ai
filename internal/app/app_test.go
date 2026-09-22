@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/cli"
 	"io"
 	"os"
 	"os/exec"
@@ -647,9 +646,6 @@ func TestTuiSyncSelectionPreservesCustomPermissionExclusion(t *testing.T) {
 // Components from state before applyOverrides sets Profiles, so without the
 // fix ComponentSDD is dropped and the profile write silently never runs.
 func TestTuiSyncProfilePersistsWhenSDDComponentMissingFromState(t *testing.T) {
-	// This test drives the real sync pipeline and is about the TUI, not about
-	// openrecord. CI installs no ecosystem binary, so neutralize its arms.
-	t.Cleanup(cli.NeutralizeOpenRecordForTest())
 	home := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(home, ".config", "opencode"), 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
@@ -842,9 +838,6 @@ func buildAppCandidateBinary(t *testing.T) string {
 }
 
 func TestTuiInstallOnThenSyncPreservesAndRefreshesOpenCodeActivation(t *testing.T) {
-	// This test drives the real sync pipeline and is about the TUI, not about
-	// openrecord. CI installs no ecosystem binary, so neutralize its arms.
-	t.Cleanup(cli.NeutralizeOpenRecordForTest())
 	home := t.TempDir()
 	previousUserHomeDir := appUserHomeDir
 	appUserHomeDir = func() (string, error) { return home, nil }
@@ -919,9 +912,6 @@ func TestDeferredSyncIncludesCodexPermissionsArgs(t *testing.T) {
 }
 
 func TestTuiSyncClaudeModelConfigWritesSelectedAssignments(t *testing.T) {
-	// This test drives the real sync pipeline and is about the TUI, not about
-	// openrecord. CI installs no ecosystem binary, so neutralize its arms.
-	t.Cleanup(cli.NeutralizeOpenRecordForTest())
 	home := t.TempDir()
 	if err := state.Write(home, state.InstallState{InstalledAgents: []string{string(model.AgentPi)}}); err != nil {
 		t.Fatalf("state.Write: %v", err)
@@ -995,9 +985,6 @@ func TestTuiSyncClaudeModelConfigWritesSelectedAssignments(t *testing.T) {
 }
 
 func TestTuiSyncModelConfigPropagatesAssignmentWriteFailure(t *testing.T) {
-	// This test drives the real sync pipeline and is about the TUI, not about
-	// openrecord. CI installs no ecosystem binary, so neutralize its arms.
-	t.Cleanup(cli.NeutralizeOpenRecordForTest())
 	home := t.TempDir()
 	original := state.InstallState{
 		InstalledAgents:          []string{string(model.AgentClaudeCode)},
@@ -1037,9 +1024,6 @@ func TestTuiSyncModelConfigPropagatesAssignmentWriteFailure(t *testing.T) {
 }
 
 func TestTuiSyncClaudePhaseAssignmentsPersistAndGenerateEffort(t *testing.T) {
-	// This test drives the real sync pipeline and is about the TUI, not about
-	// openrecord. CI installs no ecosystem binary, so neutralize its arms.
-	t.Cleanup(cli.NeutralizeOpenRecordForTest())
 	home := t.TempDir()
 	if err := state.Write(home, state.InstallState{InstalledAgents: []string{string(model.AgentPi)}}); err != nil {
 		t.Fatalf("state.Write: %v", err)
@@ -2085,9 +2069,6 @@ func TestLoadPersistedAssignments_CodexCarrilModels(t *testing.T) {
 }
 
 func TestTuiSyncMigratesLegacyCodexCarrilDefaults(t *testing.T) {
-	// This test drives the real sync pipeline and is about the TUI, not about
-	// openrecord. CI installs no ecosystem binary, so neutralize its arms.
-	t.Cleanup(cli.NeutralizeOpenRecordForTest())
 	t.Cleanup(codex.SetRuntimeVersionCommandForTest("codex-cli 0.144.0", nil))
 	home := t.TempDir()
 	if err := state.Write(home, state.InstallState{

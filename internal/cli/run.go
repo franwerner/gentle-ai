@@ -1728,7 +1728,12 @@ func (s componentApplyStep) Run() error {
 			s.state.openRecordFannedOut = result.FannedOut
 		}
 		if err != nil {
-			return fmt.Errorf("install openrecord: %w", err)
+			// openrecord arrives through every non-custom preset; nobody asks for
+			// it by name. Its install failing must not abort the components the
+			// user actually chose — the same reasoning engram's auto-added arm
+			// carries (#3725) — so report it with the command that retries it.
+			fmt.Fprintf(os.Stderr, "WARNING: openrecord could not be installed: %v\nIts skills were not fanned out. Retry with `gentle-ai install`.\n", err)
+			return nil
 		}
 		if result.FannedOut == 0 {
 			fmt.Fprintln(os.Stderr, "WARNING: openrecord was installed, but no selected agent exposes a skills directory — its skills were not fanned out.")
