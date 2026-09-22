@@ -511,7 +511,14 @@ func TestKilocodeReviewSettingsMatchCurrentMainBaseline(t *testing.T) {
 	// instead of shelling out. Kilo renders the guard through the OpenCode
 	// orchestrator asset, so the baseline is rederived. Authorized scope
 	// extension (user gate), not drift.
-	const want = "74d1e3d372958c050259ee392e9b1ee0bc43f006fc771dcfc24478528e294fcf"
+	// openrecord-unconditional: that same report-and-forward sentence is
+	// removed again. openrecord is installed unconditionally and nothing
+	// declares or resolves a record store any more, so the dispatcher has no
+	// record-store fact to report and the phases have no axis to be told
+	// about. The rendered Kilocode prompt differs from the prior baseline by
+	// exactly that one sentence and nothing else, so the baseline is
+	// rederived. Deliberate, not drift.
+	const want = "d2f4aad13b3930df018219bd91ea56ef8ddac3bc3978cd0374b1857e2a1c5944"
 	if got != want {
 		t.Fatalf("Kilocode settings SHA-256 = %s, want current-main baseline %s", got, want)
 	}

@@ -123,11 +123,9 @@ If you make important discoveries, decisions, or fix bugs, you MUST save them to
 Do NOT return without saving what you learned. This is how the team builds persistent knowledge across sessions.
 ```
 
-<--:openrecord-->
-When `recordStore.resolved: openrecord`, the `mem_save` instruction above is conditional: `decision` drops from the `type: "{decision|bugfix|discovery|pattern}"` enum at line 121. A decision made under an openrecord workspace is materialized as a record in the record store, not saved to Engram as a `decision`-typed observation — the record store is what governs it, and saving it here too would leave two places claiming to be the answer with nothing saying which one counts. `bugfix`, `discovery`, and `pattern` are unaffected and still go to Engram exactly as written above.
+The `mem_save` instruction above carries one carve-out: `decision` drops from the `type: "{decision|bugfix|discovery|pattern}"` enum at line 121. A decision is materialized as a record in the openrecord record store, not saved to Engram as a `decision`-typed observation — the record store is what governs it, and saving it here too would leave two places claiming to be the answer with nothing saying which one counts. `bugfix`, `discovery`, and `pattern` are unaffected and still go to Engram exactly as written above.
 
-This carve-out touches only the Non-SDD `decision` type. The SDD artifact-save instructions elsewhere in this file — the change's own in-flight spec, design, tasks, apply-progress, and verify-report, all persisted via `mem_save(topic_key: "sdd/{change-name}/{artifact-type}", ...)` — are unaffected and still persist to Engram unconditionally, regardless of `recordStore.resolved`.
-<--:/openrecord-->
+This carve-out touches only the Non-SDD `decision` type. The SDD artifact-save instructions elsewhere in this file — the change's own in-flight spec, design, tasks, apply-progress, and verify-report, all persisted via `mem_save(topic_key: "sdd/{change-name}/{artifact-type}", ...)` — are unaffected and still persist to Engram unconditionally.
 
 SDD (with dependencies):
 ```

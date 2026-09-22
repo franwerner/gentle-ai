@@ -115,16 +115,11 @@ mem_save(
 
 `capture_prompt: false` is REQUIRED for SDD artifacts when the Engram tool schema supports it. Engram v1.15.3 captures user prompts by default for human/proactive saves, but SDD artifacts are automated pipeline outputs. Do not infer this from `type` because both SDD artifacts and human architecture decisions use `architecture`. If an older schema rejects or does not expose `capture_prompt`, omit it rather than failing.
 
-<--:openrecord-->
-
 **Record-store split for `type: architecture`.** This `type` carries two distinct senses, and the
-record-store condition names only one of them. SDD phase artifacts — every phase from `explore`
-through `archive-report` — MUST keep saving to Engram with `type: architecture` in every
-`recordStore.resolved` mode, `openrecord` included. The human architecture- or design-decision sense
-of that same `type: architecture` MUST NOT be written to Engram when `recordStore.resolved` is
-`openrecord` — that decision belongs to the record store instead.
-
-<--:/openrecord-->
+record-store carve-out names only one of them. SDD phase artifacts — every phase from `explore`
+through `archive-report` — MUST keep saving to Engram with `type: architecture`. The human
+architecture- or design-decision sense of that same `type: architecture` MUST NOT be written to
+Engram — that decision belongs to the openrecord record store instead.
 
 Update existing artifact (when you have the observation ID):
 ```

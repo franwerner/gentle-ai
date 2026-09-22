@@ -35,10 +35,15 @@ type StatusV2Projection struct {
 	BlockedReasons    []string                     `json:"blockedReasons"`
 }
 
-// recordStoreV2 mirrors RecordStoreDeclaration on the public projection.
+// openRecordStoreV2 is constant because openrecord is installed
+// unconditionally: nothing declares or resolves a record store any more. The
+// field stays on the public document because v2 changes additively — dropping
+// a key released in v2.8.2 needs a contract version bump, not an edit here.
+const openRecordStoreV2 = "openrecord"
+
 type recordStoreV2 struct {
-	Declared string      `json:"declared"`
-	Resolved RecordStore `json:"resolved"`
+	Declared string `json:"declared"`
+	Resolved string `json:"resolved"`
 }
 
 type planningHomeV2 struct {
@@ -109,9 +114,6 @@ func ProjectStatusV2(status Status) (StatusV2Projection, error) {
 	if !statusV2ArtifactStore(status.ArtifactStore) {
 		return StatusV2Projection{}, fmt.Errorf("unsupported SDD v2 artifact store %q", status.ArtifactStore) // refusal:by-design operator-knowledge: ProjectStatusV2 receives an internal aggregate, so the producer must use a supported store.
 	}
-	if !statusV2RecordStore(status.RecordStore.Resolved) {
-		return StatusV2Projection{}, fmt.Errorf("unsupported SDD v2 record store %q", status.RecordStore.Resolved) // refusal:by-design operator-knowledge: ProjectStatusV2 receives an internal aggregate, so the producer must use a supported record store.
-	}
 	if !statusV2ApplyState(status.ApplyState) {
 		return StatusV2Projection{}, fmt.Errorf("unsupported SDD v2 apply state %q", status.ApplyState) // refusal:by-design operator-knowledge: ProjectStatusV2 receives an internal aggregate, so the producer must use a supported apply state.
 	}
@@ -129,7 +131,7 @@ func ProjectStatusV2(status Status) (StatusV2Projection, error) {
 		SchemaVersion: status.SchemaVersion,
 		ChangeName:    status.ChangeName,
 		ArtifactStore: status.ArtifactStore,
-		RecordStore:   recordStoreV2{Declared: status.RecordStore.Declared, Resolved: status.RecordStore.Resolved},
+		RecordStore:   recordStoreV2{Declared: openRecordStoreV2, Resolved: openRecordStoreV2},
 		PlanningHome:  projectPlanningHomeV2(status.PlanningHome),
 		ChangeRoot:    status.ChangeRoot,
 		ArtifactPaths: projectArtifactPathsV2(status.ArtifactPaths),
@@ -222,14 +224,6 @@ func statusV2ArtifactStore(value ArtifactStore) bool {
 	// v2 enum value; no existing value or field changes.
 	return value == ArtifactStoreOpenSpec || value == ArtifactStoreEngram ||
 		value == ArtifactStoreHybrid || value == ArtifactStoreNone
-}
-
-// statusV2RecordStore admits the undeclared (empty) value in addition to
-// openrecord, unlike statusV2ArtifactStore: ProjectStatusV2 rejects the whole
-// projection on a disallowed value, so excluding empty would make every
-// workspace without the key fail to produce a status at all.
-func statusV2RecordStore(value RecordStore) bool {
-	return value == RecordStoreUndeclared || value == RecordStoreOpenRecord
 }
 
 func statusV2ArtifactState(value ArtifactState) bool {

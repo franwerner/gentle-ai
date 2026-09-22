@@ -1,7 +1,5 @@
 # openrecord Convention (shared across the six participating SDD skills)
 
-<--:openrecord-->
-
 This file is not self-contained. It fixes which phase does what and carries the two guarantees no
 emitted skill carries; the retrieval and write **mechanics** live in the skills openrecord itself
 emits — `openrecord-consult/SKILL.md` and `openrecord-capture/SKILL.md`, written as siblings of the
@@ -13,20 +11,12 @@ this convention without holding those skills — it may have no skills directory
 have been selected for openrecord's fan-out. Never reconstruct the moves from memory or from an older
 copy of this file: a remembered command shape is exactly the drift this delegation exists to end.
 
-## Activation — declared, never presence-detected
+## Activation — always, never conditional
 
-Read the `recordStore` value your launch prompt injected — the dispatcher already resolved it and the
-orchestrator already forwarded it, so there is no status projection left for you to query yourself
-here; that step is already done for you. It is `openrecord` only when the workspace's
-`openspec/config.yaml` declares `sdd.record_store: openrecord` explicitly — the presence of an
-`.openrecord/` directory on disk does NOT activate this convention, even when the store is fully
-populated.
-
-**When the injected `recordStore` is empty (undeclared), this convention does not apply.** Behave
-exactly as if openrecord were not installed: no guard, no warning, no mention of a missing declaration.
-This degradation is silent on purpose — every phase runs exactly as it does today. Acting differently
-according to this injected value is exactly what this convention is for; only determining it yourself,
-rather than reading what was already given to you, is forbidden.
+This convention always applies. openrecord is installed unconditionally, so there is nothing to
+declare, nothing to resolve, and no value to read before you act on the sections below. Do not look
+for one: there is no axis to query, no config key to check, and no status field that would tell you
+whether this convention is in force. It is.
 
 ## Per-phase responsibility map
 
@@ -34,7 +24,7 @@ rather than reading what was already given to you, is forbidden.
 | --- | --- |
 | `sdd-explore` | **Consults.** Runs the walk documented in `skills/openrecord-consult/SKILL.md` and reports how each record surfaced and which candidates it examined and ruled out. |
 | `sdd-propose` | **Contradiction-checks.** Runs the "When your work contradicts an accepted record" check below before its approval gate is offered. |
-| `sdd-spec` | **Contradiction-checks.** Same check as propose. |
+| `sdd-spec` | **Contradiction-checks, and proposes behaviour.** Same check as propose. Additionally names each capability's type and writes its affected sections out whole, reading the record that already exists so nothing it held is lost. Spec never writes a record file. |
 | `sdd-design` | **Consults and contradiction-checks.** Additionally proposes new records — `## Architecture Decisions` is where a new record appears as a proposal with its rationale. Design never writes a record file. |
 | `sdd-apply` | **Writes.** The sole writer — the contract is under "Writing records" below, the commands in `skills/openrecord-capture/SKILL.md`. |
 | `sdd-verify` | **Validates.** Runs `openrecord validate` for structural shape, and separately checks that each record's prose still describes the system as actually built — a check the binary cannot do. |
@@ -129,17 +119,66 @@ A `component`/`concern` level that does not exist yet is neither a failure nor a
 Creating it is one of the moves the skill named just above documents, and that skill already instructs
 it before a write. Create the level, write the record, and report nothing about it.
 
+**Turning a capability spec into a record.** Each capability the change's spec artifact names becomes
+exactly one record. That artifact also carries the capability's type — an operation an actor triggers,
+a rule holding across several of them, an entity's states and what moves between them, or work an event
+sets off rather than a person — because the phase that wrote the behaviour is the one that knows which
+it is. `sdd-apply` never re-derives it from the prose.
+
+| Spec artifact | Record input |
+| --- | --- |
+| the capability's name | the record's title |
+| what the capability is for, in one line | the record's description |
+| the surfaces the design's `## File Changes` paths resolve to | the surfaces the record declares — mandatory for behaviour, and a record declaring none crosses with no path and drops out of every scope check silently |
+| `## Scenarios`, and the sections the declared type asks for | the body sections of those same names |
+| *(no source field)* | the status — always `accepted` |
+
+**Whole sections, never a patch.** A record holds a document rather than a history of edits, and a
+section is the smallest thing that can be replaced — so handing over only this change's part of a
+section deletes everything that section already held. `sdd-spec` therefore reads the record that exists
+and writes each affected section out whole, already carrying both what was there and what this change
+adds; `sdd-apply` ships what it was handed and merges nothing. A capability with no record yet is
+written whole from the same sections, for the same reason.
+
+**Where a capability spec goes.** `specs/<type>/<slug>.md` — `type` as the spec artifact declared it,
+`slug` named freely from the capability's name. A level that does not exist yet is created exactly as a
+decision's is, by the move the skill named above documents.
+
 **When.** Inside an `applyState: ready` run, after the tasks are marked complete and before the return,
 and only when that batch leaves no pending task in the tasks artifact. A `## Architecture Decisions`
 entry governs the design as a whole rather than one task, so the step that implements it is the step
-that finishes the change's implementation. Under a multi-batch apply the batch clearing the last
+that finishes the change's implementation. A capability the spec artifact names is change-wide in the
+same way, and lands under the same gate, in the same run. Under a multi-batch apply the batch clearing the last
 pending task materializes; every earlier batch writes nothing and says nothing about it, because a
 later batch owning the write is the normal case, not an issue.
 
-**A declared store that is not on disk.** Write nothing and create nothing — never bootstrap a store —
+**A record store that is not on disk.** Write nothing and create nothing — never bootstrap a store —
 name the skip in the `### Issues Found` section the return already carries, and finish the batch: the
-task's code is unaffected. Do not let the skip pass in silence either. A project that declares a record
-store and has none is a configuration defect, and that line is the only way anyone finds out.
+task's code is unaffected. Do not let the skip pass in silence either. A project whose record store is
+missing is a configuration defect.
+
+**After a record exists, the design artifact stops carrying its reasoning.** `sdd-design` writes each
+decision's `**Choice**`, `**Alternatives considered**` and `**Rationale**` in full, and must keep doing
+so — that artifact is the only channel the reasoning has to reach `sdd-apply`. Once the record holds
+it, though, a second durable copy is the duplication this convention exists to remove. So after every
+record this batch materializes has landed, and before the return, rewrite the persisted design artifact
+so each materialized entry keeps its `### Decision: {Title}` heading and one `**Record**:` line naming
+the record's path, and nothing else. No status word joins that line: the record carries the status, and
+a copy here would be a second thing to keep in step.
+
+Three things bind that rewrite. It happens **once per batch, after the last record lands** — never
+interleaved between writes, so an interruption leaves records written and reasoning still present,
+which is the direction that loses nothing. It **never happens when nothing was written**: the skip
+above, or a batch still holding pending tasks, means the reasoning is the only copy there is and
+removing it destroys it. And it replaces the artifact **whole** — re-read the persisted document, swap
+that one section inside the text you read, and write the entire document back. The memory store's
+update replaces a whole observation, so handing it the pruned section alone deletes every other section
+the design wrote.
+
+An entry that already carries a `**Record**:` line was materialized by an earlier run: skip it
+entirely — no record, no rewrite, nothing reported. That marker is the test, and it is read per entry
+rather than per section, because a design re-run after a rewrite can add a fresh entry beside pruned
+ones.
 
 **The pointing test.** `sdd-apply` did the work, so it holds genuine knowledge of most of what
 `## Context` needs — which is exactly why the line between what it recalls and what it infers is
@@ -171,5 +210,3 @@ after the fact, it does not stop it from happening. Separately, `sdd-verify` che
 prose still matches the system as built — a judgement the binary cannot make. A record `sdd-verify`
 refutes is rewritten in the remediation loop, under this same writer contract; `sdd-archive` writes
 nothing into the record store, ever.
-
-<--:/openrecord-->

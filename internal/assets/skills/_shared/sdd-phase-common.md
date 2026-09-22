@@ -18,11 +18,11 @@ NOTE: the preferred path is (1) — exact skill paths selected by the orchestrat
 
 ## B. Artifact Retrieval
 
-The orchestrator injects the artifact store and the locators native status already resolved (`artifactStore`, `artifactPaths` and `recordStore` from `gentle-ai sdd-status --json --instructions`). Read what you are given.
+The orchestrator injects the artifact store and the locators native status already resolved (`artifactStore` and `artifactPaths` from `gentle-ai sdd-status --json --instructions`). Read what you are given.
 
 **Do NOT detect the artifact store, and do NOT branch on it.** The dispatcher resolved it from the store the workspace DECLARES. An agent that re-derives the store disagrees with the authority that launched it, which is exactly how a phase ends up reading a store the workspace never declared — or reading nothing at all and returning an empty result.
 
-This prohibition is about the *artifact* store specifically. `recordStore` is a value a phase may legitimately behave differently on — what is forbidden is determining it yourself, not branching on it.
+This prohibition is about the *artifact* store specifically. The record store is not an axis at all: openrecord is installed unconditionally, so there is nothing to detect and nothing to branch on — read `skills/_shared/openrecord-convention.md` and follow it.
 
 For each artifact your phase requires, read its locator:
 

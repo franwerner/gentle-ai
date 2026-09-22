@@ -19,7 +19,6 @@ Native `gentle-ai.sdd-status/v2` is the sole status contract. A request for v1 o
 
 - When the `gentle-ai` binary is available, prefer `gentle-ai sdd-status [change] --cwd <repo> --json --instructions` for read-only status and `gentle-ai sdd-continue [change] --cwd <repo>` for dispatcher output. This holds for every artifact store: the dispatcher resolves the declared store itself.
 - The native dispatcher resolves the artifact store the workspace DECLARES in `openspec/config.yaml` and reports it in `artifactStore`. A declared store is authoritative in both directions: it selects the resolver, and an empty declared store reports as empty rather than silently serving the other store's artifacts. Never re-resolve artifact status yourself, and never branch on the store: read the locators the dispatcher returned in `artifactPaths`.
-- The native dispatcher also resolves the record store the workspace declares in `sdd.record_store` and reports it as `recordStore.declared` (the verbatim config value) and `recordStore.resolved` (`openrecord`, or empty when the workspace declares no record store). Forward `recordStore` into every phase launch alongside `artifactStore` and `artifactPaths`; never resolve it yourself.
 - Runtime-attempt authority is different from artifact dispatch: normal runtime-bearing OpenSpec and Engram continuations MUST bracket external execution with `gentle-ai sdd-attempt acquire|settle --cwd <repo> --change <change>`. Their bounded result contains only `proceed`, `blocked`, or `complete` plus an opaque continuation token when required, and MAY carry `settle_obligation` on a `proceed`. The Git-common-dir immutable chain remains the sole authority for ordinals, cumulative attempt/line budgets, runtime evidence, and ordinary SDD failed-evidence remediation. Full `status|begin|finish|reset` payloads MUST NOT be embedded in the SDD v2 status document. Never create OpenSpec attempt-ledger files or Engram attempt-ledger topics.
 - A phase actor launched by a parent that already holds a `proceed` acquire for that exact work unit authenticates as that same attempt with the returned `--token`; it MUST NOT acquire again blind.
 - When `sdd-attempt status` carries a `gentle-ai.sdd-integration.consent/v1` consent block, the ledger is ASKING, not reporting. Treat it as a Lossless Blocking Prompt: relay the complete envelope in order, preserve answer tokens and invocations, and never answer on their behalf. In a non-interactive runtime, emit the complete envelope and STOP. Attempts that never ran the work are not evidence about the candidate.
@@ -38,8 +37,8 @@ schemaVersion: 2
 changeName: <change-name-or-null>
 artifactStore: openspec | engram | hybrid | none
 recordStore:
-  declared: <verbatim sdd.record_store value from openspec/config.yaml, empty when absent>
-  resolved: openrecord | <empty>
+  declared: openrecord
+  resolved: openrecord
 planningHome:
   mode: repo-local
   path: <absolute path to openspec>

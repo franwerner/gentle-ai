@@ -51,9 +51,7 @@ Writes name a mechanism because writing a file and saving an observation are dif
 - **openspec**: follow `skills/_shared/openspec-convention.md`; mark `[x]` in the file at the `tasks` locator.
 - **hybrid**: both mechanisms, against that artifact's locators.
 - **none**: return progress only. Do not update project artifacts.
-<--:openrecord-->
-- **record store**: when status reports `recordStore.resolved: openrecord`, read and follow `skills/_shared/openrecord-convention.md`.
-<--:/openrecord-->
+- **record store**: read and follow `skills/_shared/openrecord-convention.md`.
 
 ## Status and Workspace Guard
 
@@ -193,13 +191,15 @@ Update `tasks.md` — change `- [ ]` to `- [x]` for completed tasks:
 - [ ] 1.3 Add auth routes to `internal/server/server.go`  ← still pending
 ```
 
-<--:openrecord-->
-#### Step 5a: Materialize Design Decisions
+#### Step 5a: Materialize Records, Then Prune What Moved
 
-When status reports `recordStore.resolved: openrecord` AND this batch leaves no pending task in the tasks artifact, write each `## Architecture Decisions` entry from the design artifact into the record store before you return. The shared record-store convention — the one the Execution and Persistence Contract above already sends you to — fixes all four things this needs: how a design decision's fields map onto a record, how the record's path is derived, the authorship test binding the body sections no design field feeds, and what to do when the declared store is not on disk. Open it there and follow it; do not reconstruct any of it here.
+When this batch leaves no pending task in the tasks artifact, write the change's durable records into the record store before you return — both kinds, in one pass: each `## Architecture Decisions` entry from the design artifact, and each capability the spec artifact names, whose type and whole sections that artifact already carries.
 
-When the batch still leaves pending tasks, write nothing and report nothing — a later batch owns the write.
-<--:/openrecord-->
+Then, once every one of those records has landed, rewrite the persisted design artifact so each materialized decision keeps its heading and one `**Record**:` line naming where its reasoning now lives, and nothing more. That rewrite is what makes this a move rather than a copy. If nothing was written, prune nothing: the artifact is then the only place the reasoning exists.
+
+The shared record-store convention — the one the Execution and Persistence Contract above already sends you to — fixes everything this needs: how each kind of source maps onto a record, how the paths are derived, the authorship test binding the body sections no source field feeds, the three rules governing that rewrite, and what to do when the record store is not on disk. Open it there and follow it; do not reconstruct any of it here.
+
+When the batch still leaves pending tasks, write nothing, prune nothing and report nothing — a later batch owns both.
 
 ### Step 6: Persist Progress
 

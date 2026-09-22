@@ -22,7 +22,7 @@ Call `mem_save` IMMEDIATELY and WITHOUT BEING ASKED after any of these:
 
 Self-check after EVERY task: "Did I make a decision, fix a bug, learn something non-obvious, or establish a convention? If yes, call mem_save NOW."
 
-**Record-store carve-out.** Architecture and design decisions are exempt from the save order above when this workspace's `openspec/config.yaml` (or `.yml`) declares `sdd.record_store: openrecord` — they belong to that record store, not to Engram. Check the declaration yourself; the presence of an `.openrecord/` directory on disk does NOT activate this carve-out, even when the store is fully populated. No other save trigger is affected.
+**Record-store carve-out.** Architecture and design decisions are exempt from the save order above — they belong to the openrecord record store, not to Engram. No other save trigger is affected.
 
 ### DELIVERY GUARANTEE — saving is not replying
 

@@ -44,9 +44,7 @@ From the orchestrator:
 - **openspec**: Read and follow `skills/_shared/openspec-convention.md`.
 - **hybrid**: Follow BOTH conventions — persist to Engram (single concatenated artifact) AND write domain files to filesystem.
 - **none**: Return result only. Never create or modify project files.
-<--:openrecord-->
-- **record store**: when status reports `recordStore.resolved: openrecord`, read and follow `skills/_shared/openrecord-convention.md`.
-<--:/openrecord-->
+- **record store**: read and follow `skills/_shared/openrecord-convention.md`.
 
 ## What to Do
 
@@ -194,6 +192,27 @@ The system {MUST/SHALL/SHOULD} {behavior}.
 - WHEN {action}
 - THEN {outcome}
 ```
+
+#### Step 4a: Name the Type and Compose Whole Sections
+
+Each capability this change touches also becomes a durable record, and two things only this phase can
+supply travel in the artifact beside the delta above.
+
+Name the capability's **type** — an operation an actor triggers, a rule holding across several of them,
+an entity's states and what moves between them, or work an event sets off rather than a person. You
+wrote the behaviour, so you are the one who knows which it is; no later phase re-derives it from your
+prose.
+
+Then, for a capability the record store already holds, read that record and write each affected section
+out **whole** — everything it already carried plus what this change adds — rather than only the part
+that changed. A section is the smallest thing a record can have replaced, so a section handed over
+partially deletes the rest of itself. A capability with no record yet needs no read: its sections are
+whole already.
+
+The shared record-store convention — the one the Execution and Persistence Contract above already sends
+you to — fixes which sections each type asks for and how they map onto the record. Open it there and
+follow it; do not reconstruct any of it here. Write no record file yourself, ever, by any means:
+`sdd-apply` is the store's sole writer.
 
 ### Step 5: Persist Artifact
 

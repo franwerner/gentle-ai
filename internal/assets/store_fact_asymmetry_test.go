@@ -1,16 +1,29 @@
 package assets
 
 import (
+	"io/fs"
+	"path"
 	"regexp"
 	"strings"
 	"testing"
 )
 
-// #recordstore-fact-injection: the two store facts read the same on the page —
-// both name "the store" and both mention branching. Nothing short of a runtime
-// check catches the day someone rewords the artifact-store prohibition into a
-// sentence that also happens to name recordStore, or reintroduces the
-// sdd-status shell-out this change removed from Activation.
+// #openrecord-unconditional: openrecord used to be gated on a declared
+// `sdd.record_store` axis, and the shipped markdown carried that gating three
+// ways — a `<--:openrecord-->` wrapper around every participating region, a
+// "when status reports `recordStore.resolved: openrecord`" clause on every
+// pointer, and prose describing what a phase does when the store is
+// undeclared. The axis is gone: openrecord is installed unconditionally and
+// nothing declares or resolves a record store any more.
+//
+// This guard is the reconverted form of the old store-fact asymmetry checker.
+// Its subject changed, not its discipline: it pins that the conditionality
+// stays gone (U1, U2) while the substance it used to wrap stays present (U3),
+// that the one genuinely surviving `recordStore` surface — the frozen v2
+// status projection — keeps its shape pinned to the constant (U5), and that
+// the artifact-store facts the old checker also carried (C3a, C3b, C3c) are
+// untouched. Nothing short of a runtime check catches the day someone
+// reintroduces a wrapper, a gating clause, or an instruction to read the axis.
 
 type unit struct {
 	Line int
@@ -39,6 +52,11 @@ const trailingAllowed = "*`)\"]"
 
 var abbreviations = []string{"e.g", "i.e", "etc", "vs"}
 
+const (
+	openRecordDelimOpen  = "<--:openrecord-->"
+	openRecordDelimClose = "<--:/openrecord-->"
+)
+
 var (
 	prohibitionMarkers = []string{
 		"Do NOT detect the artifact store",
@@ -46,116 +64,141 @@ var (
 		"do NOT branch on it",
 		"never branch on the store",
 	}
-	permissionMarkers = []string{
-		"may legitimately behave differently",
-		"what is forbidden is determining it yourself",
-	}
 	scopingMarkers = []string{
 		"This prohibition is about the",
 		"artifact",
 	}
-	injectionMarkers = []string{
-		"injects",
-		"injected",
-		"launch prompt",
-	}
-	resolutionMarkers = []string{
-		"already resolved",
-		"dispatcher resolved",
-	}
-	lookupMarkers = []string{
-		"gentle-ai sdd-status",
-		"sdd-status --json",
-		"--json",
+	// gatingMarkers are the literal shapes a record-store condition took
+	// before the axis was deleted. Every one of them names the axis itself
+	// rather than merely naming openrecord, so unconditional prose that
+	// simply says "the openrecord record store" never matches.
+	gatingMarkers = []string{
 		"recordStore.resolved",
-	}
-	// reportMarkers and forwardMarkers are anchored to the backtick-plus-
-	// recordStore span so the artifactStore sentence in the same bullet
-	// cannot satisfy them (see the design's "framing is checked by surface
-	// direction" decision).
-	reportMarkers = []string{
-		"reports it as `recordStore",
-		"reporting it in `recordStore",
-	}
-	forwardMarkers = []string{
-		"`recordStore.resolved` into every phase launch", // claude/sdd-orchestrator-workflow.md:35
-		"`recordStore` into every phase launch",          // skills/_shared/sdd-status-contract.md:22
+		"recordStore.declared",
+		"sdd.record_store",
+		"record_store",
+		"the record store the workspace declares",
+		"declares no record store",
+		"when the injected",
+		"is empty (undeclared)",
 	}
 )
 
-const (
-	facingPhase      = "phase"
-	facingDispatcher = "dispatcher"
-)
-
-// surfaceSpec declares, for one prose surface, which framing checker runs
-// (Facing) and a verdict for every condition in the C2/C3a/C3b/C3c family.
-// Conditions is a map with an asserted key set, never bare struct bools,
-// because a Go zero-value bool cannot be told apart from a field nobody
-// filled in — see TestSurfaceRegistryDeclaresAVerdictForEveryCondition.
+// surfaceSpec declares, for one prose surface, the passages that MUST survive
+// on it and a verdict for every condition in the C3a/C3b family. Conditions is
+// a map with an asserted key set, never bare struct bools, because a Go
+// zero-value bool cannot be told apart from a field nobody filled in — see
+// TestSurfaceRegistryDeclaresAVerdictForEveryCondition.
 type surfaceSpec struct {
 	ID            string
 	Path          string
 	Heading       string
-	SchemaHeading string // non-empty → C5 runs on this surface
-	Facing        string
+	SchemaHeading string // non-empty → U5 runs on this surface
+	Passages      []string
 	Conditions    map[string]bool
 }
 
-// surfaceRegistry is the single source of which surfaces the guard covers
-// and what applies to each. A false verdict here is a recorded decision
-// (see the design's "Architecture Decisions"), not an omission.
+// surfaceRegistry is the single source of which surfaces the guard covers and
+// what applies to each. A false verdict here is a recorded decision, not an
+// omission, and an empty Passages list is rejected outright by
+// TestSurfaceRegistryDeclaresAVerdictForEveryCondition — a surface nobody
+// pinned content on is exactly the vacuous checker this program hit twice.
 var surfaceRegistry = []surfaceSpec{
 	{
 		ID:      "section-B",
 		Path:    "skills/_shared/sdd-phase-common.md",
 		Heading: "## B. Artifact Retrieval",
-		Facing:  facingPhase,
-		Conditions: map[string]bool{
-			"C2": false, "C3a": true, "C3b": true, "C3c": true,
+		Passages: []string{
+			"This prohibition is about the *artifact* store specifically.",
+			"read `skills/_shared/openrecord-convention.md` and follow it",
 		},
+		Conditions: map[string]bool{"C3a": true, "C3b": true, "C3c": true},
 	},
 	{
 		ID:      "activation",
 		Path:    "skills/_shared/openrecord-convention.md",
 		Heading: "## Activation",
-		Facing:  facingPhase,
-		Conditions: map[string]bool{
-			"C2": true, "C3a": false, "C3b": false, "C3c": true,
+		Passages: []string{
+			"This convention always applies.",
+			"openrecord is installed unconditionally",
 		},
+		Conditions: map[string]bool{"C3a": false, "C3b": false, "C3c": true},
+	},
+	{
+		ID:      "writer-contract",
+		Path:    "skills/_shared/openrecord-convention.md",
+		Heading: "## Writing records",
+		Passages: []string{
+			"Only `sdd-apply` writes into the record store, in the same step that implements the governing code",
+			"**A record store that is not on disk.** Write nothing and create nothing",
+		},
+		Conditions: map[string]bool{"C3a": false, "C3b": false, "C3c": true},
 	},
 	{
 		ID:      "claude-workflow",
 		Path:    "claude/sdd-orchestrator-workflow.md",
 		Heading: "### Native SDD Dispatcher Guard",
-		Facing:  facingDispatcher,
-		Conditions: map[string]bool{
-			"C2": false, "C3a": false, "C3b": true, "C3c": true,
+		Passages: []string{
+			"Do NOT determine the artifact store yourself, and do NOT branch on it.",
 		},
+		Conditions: map[string]bool{"C3a": false, "C3b": true, "C3c": true},
 	},
 	{
 		ID:            "status-contract",
 		Path:          "skills/_shared/sdd-status-contract.md",
 		Heading:       "## Native Engine",
 		SchemaHeading: "## Status Schema",
-		Facing:        facingDispatcher,
-		Conditions: map[string]bool{
-			"C2": false, "C3a": false, "C3b": true, "C3c": true,
+		Passages: []string{
+			"never branch on the store",
 		},
+		Conditions: map[string]bool{"C3a": false, "C3b": true, "C3c": true},
+	},
+	{
+		ID:      "apply-step-5a",
+		Path:    "skills/sdd-apply/SKILL.md",
+		Heading: "#### Step 5a: Materialize Records, Then Prune What Moved",
+		Passages: []string{
+			"When this batch leaves no pending task in the tasks artifact, write the change's durable records into the record store before you return",
+			"When the batch still leaves pending tasks, write nothing, prune nothing and report nothing",
+		},
+		Conditions: map[string]bool{"C3a": false, "C3b": false, "C3c": true},
+	},
+	{
+		ID:      "spec-step-4a",
+		Path:    "skills/sdd-spec/SKILL.md",
+		Heading: "#### Step 4a: Name the Type and Compose Whole Sections",
+		Passages: []string{
+			"Each capability this change touches also becomes a durable record",
+			"`sdd-apply` is the store's sole writer",
+		},
+		Conditions: map[string]bool{"C3a": false, "C3b": false, "C3c": true},
 	},
 }
 
-// validateSurfaceRegistry fails a surface whose Conditions map is missing
-// one of the required keys, or whose Facing is not one of the two known
-// values — the anti-vacuity check for the registry itself.
+// participatingPhasePointers is the pointer bullet each of the six
+// participating phases carries, unwrapped and unconditional. The bullet is the
+// smallest thing that could quietly regain a condition, so it is pinned in
+// full rather than by its citation alone.
+var participatingPhasePointers = map[string]string{
+	"sdd-explore": "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
+	"sdd-propose": "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
+	"sdd-spec":    "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
+	"sdd-design":  "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
+	"sdd-apply":   "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
+	"sdd-verify":  "- **record store**: read and follow `skills/_shared/openrecord-convention.md`. Run `openrecord validate` for structural shape and separately check that each record's prose still describes the system as actually built.",
+}
+
+// validateSurfaceRegistry fails a surface whose Conditions map is missing one
+// of the required keys, or which pins no passage at all — the anti-vacuity
+// check for the registry itself.
 func validateSurfaceRegistry(registry []surfaceSpec) []finding {
-	requiredConditions := []string{"C2", "C3a", "C3b", "C3c"}
+	requiredConditions := []string{"C3a", "C3b", "C3c"}
 	var findings []finding
 	for _, spec := range registry {
-		if spec.Facing != facingPhase && spec.Facing != facingDispatcher {
+		if len(spec.Passages) == 0 {
 			findings = append(findings, finding{
 				Path: spec.ID, Kind: "registry",
-				Why: "Facing is not one of the two known values: " + spec.Facing,
+				Why: "surface pins no passage; a registered surface with nothing to preserve checks nothing",
 			})
 		}
 		for _, key := range requiredConditions {
@@ -174,7 +217,8 @@ func validateSurfaceRegistry(registry []surfaceSpec) []finding {
 // inside a paragraph or list entry, or a whole table row. baseLine is the
 // 1-indexed line the surface's first physical line occupies in its source
 // file; a unit's Line is baseLine plus the zero-based index of its block's
-// first physical line within the surface.
+// first physical line within the surface. Fenced content is skipped by design,
+// which is what keeps the frozen yaml projection out of the prose checkers.
 func segment(surface string, baseLine int) []unit {
 	type block struct {
 		kind     string
@@ -328,10 +372,6 @@ func containsAll(text string, markers []string) bool {
 	return true
 }
 
-func isPermissionExempt(text string) bool {
-	return containsAny(text, permissionMarkers)
-}
-
 func truncateRunes(s string, max int) string {
 	r := []rune(s)
 	if len(r) <= max {
@@ -340,98 +380,102 @@ func truncateRunes(s string, max int) string {
 	return string(r[:max])
 }
 
-// c1InjectionFraming fails when a phase-facing surface does not name
-// recordStore at all — every registered facingPhase surface has a job to
-// tell the phase what recordStore is, so absence is mandatory to flag, not
-// merely conditional — or when it names recordStore without also framing it,
-// within the same surface, as an injected and already-resolved value.
-func c1InjectionFraming(path, text string, baseLine int) []finding {
-	if !strings.Contains(text, "recordStore") {
-		return []finding{{
-			Path: path, Line: baseLine, Kind: "surface",
-			Text: truncateRunes(text, 200),
-			Why:  "surface does not name recordStore at all — the injected-fact clause appears to have been removed",
-		}}
-	}
+// u1NoConditionalWrapper fails when content carries either half of the
+// `<--:openrecord-->` pair. The wrapper was never processed by anything — no
+// renderer strips it, so it shipped verbatim into every installed skill — which
+// is exactly why its reappearance has to be caught by a test rather than by
+// a rendering step noticing it.
+func u1NoConditionalWrapper(assetPath, content string) []finding {
 	var findings []finding
-	if !containsAny(text, injectionMarkers) {
-		findings = append(findings, finding{
-			Path: path, Line: baseLine, Kind: "surface",
-			Text: truncateRunes(text, 200),
-			Why:  "names recordStore with no injection-framing marker present in the surface",
-		})
-	}
-	if !containsAny(text, resolutionMarkers) {
-		findings = append(findings, finding{
-			Path: path, Line: baseLine, Kind: "surface",
-			Text: truncateRunes(text, 200),
-			Why:  "names recordStore with no resolution marker present in the surface",
-		})
+	for _, delim := range []string{openRecordDelimOpen, openRecordDelimClose} {
+		if idx := strings.Index(content, delim); idx >= 0 {
+			findings = append(findings, finding{
+				Path: assetPath, Line: 1 + strings.Count(content[:idx], "\n"), Kind: "delimiter",
+				Text: delim,
+				Why:  "asset carries an openrecord conditional wrapper; openrecord is unconditional and nothing wraps it",
+			})
+		}
 	}
 	return findings
 }
 
-// c2NoStatusLookup fails when the Activation surface still carries a
-// status-projection invocation.
-func c2NoStatusLookup(path, text string, baseLine int) []finding {
-	var found []string
-	for _, literal := range lookupMarkers {
-		if strings.Contains(text, literal) {
-			found = append(found, literal)
+// u2NoAxisGating fails when a prose unit names the deleted record-store axis:
+// a `recordStore.resolved`/`recordStore.declared` gate, an `sdd.record_store`
+// config lookup, or the undeclared-store prose that described a state which
+// can no longer occur. Unconditional prose naming "the openrecord record
+// store" matches none of these.
+func u2NoAxisGating(assetPath string, units []unit) []finding {
+	var findings []finding
+	for _, u := range units {
+		for _, marker := range gatingMarkers {
+			if !strings.Contains(u.Text, marker) {
+				continue
+			}
+			findings = append(findings, finding{
+				Path: assetPath, Line: u.Line, Kind: u.Kind,
+				Text: truncateRunes(u.Text, 200),
+				Why:  "unit gates behaviour on the deleted record-store axis via " + marker,
+			})
 		}
 	}
-	if len(found) == 0 {
-		return nil
+	return findings
+}
+
+// u3PassagesSurvive fails when a registered surface has lost a passage the
+// registry says it must keep. This is the half that makes U1 and U2 safe to
+// run: without it, deleting a section outright would satisfy both.
+func u3PassagesSurvive(assetPath, text string, baseLine int, passages []string) []finding {
+	var findings []finding
+	for _, passage := range passages {
+		if !strings.Contains(text, passage) {
+			findings = append(findings, finding{
+				Path: assetPath, Line: baseLine, Kind: "surface",
+				Text: truncateRunes(passage, 200),
+				Why:  "surface no longer carries a passage the registry requires; the content survives this change, only its conditionality was removed",
+			})
+		}
 	}
-	return []finding{{
-		Path: path, Line: baseLine, Kind: "surface",
-		Text: strings.Join(found, ", "),
-		Why:  "activation still invokes a status lookup instead of reading the injected value",
-	}}
+	return findings
 }
 
 // c3aScopingPresent fails when no unit of Section B scopes the branching
 // prohibition to the artifact store.
-func c3aScopingPresent(path string, units []unit) []finding {
+func c3aScopingPresent(assetPath string, units []unit) []finding {
 	for _, u := range units {
 		if containsAll(u.Text, scopingMarkers) {
 			return nil
 		}
 	}
 	return []finding{{
-		Path: path, Kind: "section",
+		Path: assetPath, Kind: "section",
 		Why: "no unit scopes the branching prohibition to the artifact store",
 	}}
 }
 
-// c3bMarkersStillMatch fails when none of Section B's non-exempt units
-// carries a prohibition marker any more — a sign the markers went stale.
-func c3bMarkersStillMatch(path string, units []unit) []finding {
+// c3bMarkersStillMatch fails when none of a surface's units carries a
+// prohibition marker any more — a sign the markers went stale.
+func c3bMarkersStillMatch(assetPath string, units []unit) []finding {
 	for _, u := range units {
-		if isPermissionExempt(u.Text) {
-			continue
-		}
 		if containsAny(u.Text, prohibitionMarkers) {
 			return nil
 		}
 	}
 	return []finding{{
-		Path: path, Kind: "section",
+		Path: assetPath, Kind: "section",
 		Why: "no unit carries a prohibition marker; the markers no longer match the shipped prose and must be updated, not deleted",
 	}}
 }
 
-// c3cNoConflation fails when a non-exempt unit carries both an
-// artifact-store branching prohibition and recordStore.
-func c3cNoConflation(path string, units []unit) []finding {
+// c3cNoConflation fails when a unit carries both an artifact-store branching
+// prohibition and the recordStore token. Before the axis was deleted this
+// caught the two store facts being merged into one sentence; it now catches
+// the axis being reintroduced through the prohibition that outlived it.
+func c3cNoConflation(assetPath string, units []unit) []finding {
 	var findings []finding
 	for _, u := range units {
-		if isPermissionExempt(u.Text) {
-			continue
-		}
 		if containsAny(u.Text, prohibitionMarkers) && strings.Contains(u.Text, "recordStore") {
 			findings = append(findings, finding{
-				Path: path, Line: u.Line, Kind: u.Kind,
+				Path: assetPath, Line: u.Line, Kind: u.Kind,
 				Text: truncateRunes(u.Text, 200),
 				Why:  "unit carries both an artifact-store branching prohibition and recordStore",
 			})
@@ -440,80 +484,62 @@ func c3cNoConflation(path string, units []unit) []finding {
 	return findings
 }
 
-// c4ForwardFraming fails when a dispatcher-facing surface names no
-// recordStore mention at all (the clause has been removed), or names it
-// without also stating it is reported and stating it is forwarded. Like C1,
-// C4 is mandatory: on these surfaces the mention itself is the assertion, so
-// it is never gated behind a conditional presence check.
-func c4ForwardFraming(path, text string, baseLine int) []finding {
-	if !strings.Contains(text, "recordStore") {
-		return []finding{{
-			Path: path, Line: baseLine, Kind: "surface",
-			Text: truncateRunes(text, 200),
-			Why:  "surface does not name recordStore at all — the clause appears to have been removed",
-		}}
-	}
-	var findings []finding
-	if !containsAny(text, reportMarkers) {
-		findings = append(findings, finding{
-			Path: path, Line: baseLine, Kind: "surface",
-			Text: truncateRunes(text, 200),
-			Why:  "names recordStore with no report-framing marker present in the surface",
-		})
-	}
-	if !containsAny(text, forwardMarkers) {
-		findings = append(findings, finding{
-			Path: path, Line: baseLine, Kind: "surface",
-			Text: truncateRunes(text, 200),
-			Why:  "names recordStore with no forward marker present in the surface",
-		})
-	}
-	return findings
-}
-
-// schemaDeclaresRecordStore reports whether the schema region carries a line
-// equal to "recordStore:" immediately followed by lines prefixed "  declared:"
-// and "  resolved:" — binding the sub-keys to their parent rather than
-// matching them bare, so the check stays correct if artifactStore ever
-// becomes an object with its own declared/resolved children.
-func schemaDeclaresRecordStore(text string) bool {
+// schemaRecordStoreLines returns the two child lines of the frozen projection's
+// `recordStore:` key, or ok=false when the key is absent or not followed by a
+// `declared:` and a `resolved:` line — binding the sub-keys to their parent
+// rather than matching them bare.
+func schemaRecordStoreLines(text string) (declared, resolved string, ok bool) {
 	lines := strings.Split(text, "\n")
 	for i, raw := range lines {
 		if strings.TrimRight(raw, "\r") != "recordStore:" {
 			continue
 		}
 		if i+2 >= len(lines) {
-			return false
+			return "", "", false
 		}
-		return strings.HasPrefix(lines[i+1], "  declared:") && strings.HasPrefix(lines[i+2], "  resolved:")
+		declared, okDeclared := strings.CutPrefix(strings.TrimRight(lines[i+1], "\r"), "  declared:")
+		resolved, okResolved := strings.CutPrefix(strings.TrimRight(lines[i+2], "\r"), "  resolved:")
+		if !okDeclared || !okResolved {
+			return "", "", false
+		}
+		return strings.TrimSpace(declared), strings.TrimSpace(resolved), true
 	}
-	return false
+	return "", "", false
 }
 
-// c5ProseSchemaAgreement fails when the Native Engine prose does not name
-// both recordStore.declared and recordStore.resolved, or when the Status
-// Schema region does not declare recordStore with both child lines — naming
-// which half is missing. It reads two raw regions and never goes through
-// segment(), which skips fenced content by design and would see no units in
-// the StatusV2Projection yaml block.
-func c5ProseSchemaAgreement(path, proseText, schemaText string, proseBase, schemaBase int) []finding {
-	var findings []finding
-	if !strings.Contains(proseText, "recordStore.declared") || !strings.Contains(proseText, "recordStore.resolved") {
-		findings = append(findings, finding{
-			Path: path, Line: proseBase, Kind: "surface",
-			Text: truncateRunes(proseText, 200),
-			Why:  "prose does not name both recordStore.declared and recordStore.resolved",
-		})
-	}
-	if !schemaDeclaresRecordStore(schemaText) {
-		findings = append(findings, finding{
-			Path: path, Line: schemaBase, Kind: "surface",
+// u5SchemaPinsRecordStoreToTheConstant fails when the frozen v2 status schema
+// drops `recordStore`, or describes it as anything but the constant the
+// projection actually emits. The field survived the axis deletion: v2 changes
+// additively, so dropping a key released in v2.8.2 needs a contract version
+// bump, not an edit to the asset. The documented value therefore has to track
+// StatusV2Projection's constant, not the config key that no longer exists.
+func u5SchemaPinsRecordStoreToTheConstant(assetPath, schemaText string, schemaBase int) []finding {
+	declared, resolved, ok := schemaRecordStoreLines(schemaText)
+	if !ok {
+		return []finding{{
+			Path: assetPath, Line: schemaBase, Kind: "surface",
 			Text: truncateRunes(schemaText, 200),
-			Why:  "schema region does not declare recordStore with both a declared: and a resolved: child line",
-		})
+			Why:  "frozen schema region does not declare recordStore with both a declared: and a resolved: child line",
+		}}
+	}
+	var findings []finding
+	for _, pair := range []struct{ key, value string }{{"declared", declared}, {"resolved", resolved}} {
+		if pair.value != openRecordProjectionConstant {
+			findings = append(findings, finding{
+				Path: assetPath, Line: schemaBase, Kind: "surface",
+				Text: pair.key + ": " + pair.value,
+				Why:  "frozen schema documents recordStore." + pair.key + " as something other than the constant the projection emits (" + openRecordProjectionConstant + ")",
+			})
+		}
 	}
 	return findings
 }
+
+// openRecordProjectionConstant mirrors internal/sddstatus's openRecordStoreV2,
+// which is unexported. Both halves are pinned in lockstep by
+// internal/sddstatus/status_v2_clean_break_test.go on the Go side and by U5 on
+// the asset side.
+const openRecordProjectionConstant = "openrecord"
 
 func reportFindings(t *testing.T, findings []finding) {
 	t.Helper()
@@ -545,13 +571,8 @@ type loadedSurface struct {
 	schemaBaseLine int
 }
 
-// TestStoreFactsAreNotConflated pins the spec's "The two store facts are not
-// conflated" scenario over the four shipped surfaces the registry declares.
-// One t.Run per condition, each iterating the registry filtered by its own
-// flag — an empty markdownSection result is always t.Fatalf, never a skip,
-// so a renamed heading breaks the guard loudly instead of passing with
-// nothing to check.
-func TestStoreFactsAreNotConflated(t *testing.T) {
+func loadSurfaces(t *testing.T) map[string]loadedSurface {
+	t.Helper()
 	surfaces := make(map[string]loadedSurface, len(surfaceRegistry))
 	for _, spec := range surfaceRegistry {
 		content := MustRead(spec.Path)
@@ -572,24 +593,82 @@ func TestStoreFactsAreNotConflated(t *testing.T) {
 		}
 		surfaces[spec.ID] = loaded
 	}
+	return surfaces
+}
 
-	t.Run("C1", func(t *testing.T) {
-		for _, spec := range surfaceRegistry {
-			if spec.Facing != facingPhase {
-				continue
-			}
-			s := surfaces[spec.ID]
-			reportFindings(t, c1InjectionFraming(spec.Path, s.text, s.baseLine))
+// markdownAssetPaths walks the whole embedded asset tree and returns every
+// markdown file in it. U1 runs over this rather than over surfaceRegistry: a
+// wrapper reintroduced in an asset nobody registered is exactly the shape a
+// registry-scoped check cannot see.
+func markdownAssetPaths(t *testing.T) []string {
+	t.Helper()
+	var paths []string
+	err := fs.WalkDir(FS, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && path.Ext(p) == ".md" {
+			paths = append(paths, p)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkDir(assets) error = %v", err)
+	}
+	if len(paths) == 0 {
+		t.Fatal("asset walk found no markdown files; U1 would pass over nothing")
+	}
+	return paths
+}
+
+// TestOpenRecordBehaviourIsUnconditional is the guard proper: U1 over the whole
+// embedded tree, U2/U3 and the surviving artifact-store conditions over the
+// registered surfaces, U5 over the frozen projection. One t.Run per condition,
+// each iterating its own scope — an empty markdownSection result is always
+// t.Fatalf inside loadSurfaces, never a skip, so a renamed heading breaks the
+// guard loudly instead of passing with nothing to check.
+func TestOpenRecordBehaviourIsUnconditional(t *testing.T) {
+	surfaces := loadSurfaces(t)
+
+	t.Run("U1-no-conditional-wrapper", func(t *testing.T) {
+		for _, assetPath := range markdownAssetPaths(t) {
+			reportFindings(t, u1NoConditionalWrapper(assetPath, MustRead(assetPath)))
 		}
 	})
 
-	t.Run("C2", func(t *testing.T) {
+	t.Run("U2-no-axis-gating", func(t *testing.T) {
 		for _, spec := range surfaceRegistry {
-			if !spec.Conditions["C2"] {
+			s := surfaces[spec.ID]
+			reportFindings(t, u2NoAxisGating(spec.Path, s.units))
+		}
+	})
+
+	t.Run("U3-passages-survive", func(t *testing.T) {
+		for _, spec := range surfaceRegistry {
+			s := surfaces[spec.ID]
+			reportFindings(t, u3PassagesSurvive(spec.Path, s.text, s.baseLine, spec.Passages))
+		}
+	})
+
+	t.Run("U4-phase-pointers-unconditional", func(t *testing.T) {
+		if len(participatingPhasePointers) != 6 {
+			t.Fatalf("participatingPhasePointers has %d entries, want the six participating phases", len(participatingPhasePointers))
+		}
+		for skillID, bullet := range participatingPhasePointers {
+			content := MustRead("skills/" + skillID + "/SKILL.md")
+			if count := strings.Count(content, bullet); count != 1 {
+				t.Errorf("%s carries the unconditional record-store pointer %d times, want exactly 1: %q", skillID, count, bullet)
+			}
+		}
+	})
+
+	t.Run("U5-frozen-schema-pins-the-constant", func(t *testing.T) {
+		for _, spec := range surfaceRegistry {
+			if spec.SchemaHeading == "" {
 				continue
 			}
 			s := surfaces[spec.ID]
-			reportFindings(t, c2NoStatusLookup(spec.Path, s.text, s.baseLine))
+			reportFindings(t, u5SchemaPinsRecordStoreToTheConstant(spec.Path, s.schemaText, s.schemaBaseLine))
 		}
 	})
 
@@ -622,26 +701,6 @@ func TestStoreFactsAreNotConflated(t *testing.T) {
 			reportFindings(t, c3cNoConflation(spec.Path, s.units))
 		}
 	})
-
-	t.Run("C4", func(t *testing.T) {
-		for _, spec := range surfaceRegistry {
-			if spec.Facing != facingDispatcher {
-				continue
-			}
-			s := surfaces[spec.ID]
-			reportFindings(t, c4ForwardFraming(spec.Path, s.text, s.baseLine))
-		}
-	})
-
-	t.Run("C5", func(t *testing.T) {
-		for _, spec := range surfaceRegistry {
-			if spec.SchemaHeading == "" {
-				continue
-			}
-			s := surfaces[spec.ID]
-			reportFindings(t, c5ProseSchemaAgreement(spec.Path, s.text, s.schemaText, s.baseLine, s.schemaBaseLine))
-		}
-	})
 }
 
 // TestSegmentMasksInlineCodeSpans proves step 3 of segment(): a period
@@ -669,18 +728,193 @@ func TestSegmentJoinsWrappedLinesIntoOneUnit(t *testing.T) {
 	}
 }
 
-// TestC2FlagsStatusLookupInActivation proves C2 fires, with exactly one
-// finding, when Activation prose still names a status-projection call.
-func TestC2FlagsStatusLookupInActivation(t *testing.T) {
-	text := "Before this rewrite, a phase would run `gentle-ai sdd-status --json` to learn the value."
-	findings := c2NoStatusLookup("synthetic-activation", text, 1)
-	if len(findings) != 1 {
-		t.Fatalf("c2NoStatusLookup() = %d findings, want 1: %+v", len(findings), findings)
+// TestU1FlagsReintroducedWrapperInAShippedAsset is U1's anti-vacuity fixture,
+// run against the real asset rather than a synthetic string: the shipped file
+// passes first, then wrapping one of its sections back up — via mustMutate,
+// so a drifted needle turns this red instead of vacuously green — must be
+// flagged, once per delimiter half.
+func TestU1FlagsReintroducedWrapperInAShippedAsset(t *testing.T) {
+	const assetPath = "skills/_shared/openrecord-convention.md"
+	content := MustRead(assetPath)
+
+	if findings := u1NoConditionalWrapper(assetPath, content); len(findings) != 0 {
+		t.Fatalf("u1NoConditionalWrapper(shipped) = %d findings, want 0: %+v", len(findings), findings)
+	}
+
+	const heading = "## Activation"
+	mutated := mustMutate(t, content, heading, openRecordDelimOpen+"\n"+heading)
+	mutated = mustMutate(t, mutated, "## Per-phase responsibility map", openRecordDelimClose+"\n\n## Per-phase responsibility map")
+
+	findings := u1NoConditionalWrapper(assetPath, mutated)
+	if len(findings) != 2 {
+		t.Fatalf("u1NoConditionalWrapper(rewrapped) = %d findings, want 2 (one per delimiter half): %+v", len(findings), findings)
+	}
+	for _, f := range findings {
+		if !strings.Contains(f.Why, "conditional wrapper") {
+			t.Fatalf("finding.Why = %q, want it to name the conditional wrapper", f.Why)
+		}
 	}
 }
 
-// TestC3cDetectsConflationFixture pins the spec's first failure scenario:
-// widening the artifact-store prohibition to also name recordStore.
+// TestU1ReachesUnregisteredAssets proves U1's scope is the whole embedded
+// tree, not surfaceRegistry: the walk must reach an asset no registry row
+// names, so a wrapper smuggled into one is still caught.
+func TestU1ReachesUnregisteredAssets(t *testing.T) {
+	registered := map[string]bool{}
+	for _, spec := range surfaceRegistry {
+		registered[spec.Path] = true
+	}
+	for _, assetPath := range markdownAssetPaths(t) {
+		if !registered[assetPath] {
+			return
+		}
+	}
+	t.Fatal("every markdown asset is registered; U1's whole-tree scope proves nothing beyond the registry")
+}
+
+// TestU2FlagsReintroducedGatingClause pins the gating shape this change
+// removed: the shipped pointer passes, and putting the "when status reports
+// recordStore.resolved" condition back on it must fire.
+func TestU2FlagsReintroducedGatingClause(t *testing.T) {
+	const assetPath = "skills/sdd-apply/SKILL.md"
+	content := MustRead(assetPath)
+	section := markdownSection(content, "#### Step 5a: Materialize Records, Then Prune What Moved")
+	if section == "" {
+		t.Fatal("heading \"#### Step 5a: Materialize Records, Then Prune What Moved\" not found")
+	}
+
+	if findings := u2NoAxisGating(assetPath, segment(section, 1)); len(findings) != 0 {
+		t.Fatalf("u2NoAxisGating(shipped) = %d findings, want 0: %+v", len(findings), findings)
+	}
+
+	mutated := mustMutate(t, section,
+		"When this batch leaves no pending task",
+		"When status reports `recordStore.resolved: openrecord` AND this batch leaves no pending task")
+
+	findings := u2NoAxisGating(assetPath, segment(mutated, 1))
+	if len(findings) != 1 {
+		t.Fatalf("u2NoAxisGating(gated) = %d findings, want 1: %+v", len(findings), findings)
+	}
+	if !strings.Contains(findings[0].Why, "recordStore.resolved") {
+		t.Fatalf("finding.Why = %q, want it to name the gating marker", findings[0].Why)
+	}
+}
+
+// TestU2FlagsReintroducedDeclarationLookup covers the other gating shape: an
+// instruction to read the deleted `sdd.record_store` config key.
+func TestU2FlagsReintroducedDeclarationLookup(t *testing.T) {
+	text := "Read the value the workspace's `openspec/config.yaml` declares in `sdd.record_store` before acting."
+	findings := u2NoAxisGating("synthetic-activation", segment(text, 1))
+	if len(findings) != 2 {
+		t.Fatalf("u2NoAxisGating() = %d findings, want 2 (sdd.record_store and its record_store substring): %+v", len(findings), findings)
+	}
+}
+
+// TestU2IgnoresUnconditionalRecordStoreProse proves U2 is narrower than
+// strings.Contains("record store"): prose that names the store without gating
+// on an axis must not fire, or the guard would forbid the content this change
+// deliberately kept.
+func TestU2IgnoresUnconditionalRecordStoreProse(t *testing.T) {
+	text := "Write the change's durable records into the openrecord record store before you return. " +
+		"Only `sdd-apply` writes into the record store."
+	if findings := u2NoAxisGating("synthetic", segment(text, 1)); len(findings) != 0 {
+		t.Fatalf("u2NoAxisGating(unconditional prose) = %d findings, want 0: %+v", len(findings), findings)
+	}
+}
+
+// TestU3FlagsDeletedPassage is the "content survives" half's own anti-vacuity
+// fixture: the shipped surface satisfies its pins, then deleting one — via
+// mustMutate — must report exactly that passage.
+func TestU3FlagsDeletedPassage(t *testing.T) {
+	const assetPath = "skills/_shared/openrecord-convention.md"
+	content := MustRead(assetPath)
+	section := markdownSection(content, "## Writing records")
+	if section == "" {
+		t.Fatal("heading \"## Writing records\" not found")
+	}
+
+	var spec surfaceSpec
+	for _, candidate := range surfaceRegistry {
+		if candidate.ID == "writer-contract" {
+			spec = candidate
+		}
+	}
+	if len(spec.Passages) == 0 {
+		t.Fatal("surfaceRegistry no longer carries the writer-contract row")
+	}
+
+	if findings := u3PassagesSurvive(assetPath, section, 1, spec.Passages); len(findings) != 0 {
+		t.Fatalf("u3PassagesSurvive(shipped) = %d findings, want 0: %+v", len(findings), findings)
+	}
+
+	for _, passage := range spec.Passages {
+		t.Run(truncateRunes(passage, 40), func(t *testing.T) {
+			mutated := mustMutate(t, section, passage, "")
+			findings := u3PassagesSurvive(assetPath, mutated, 1, spec.Passages)
+			if len(findings) != 1 {
+				t.Fatalf("u3PassagesSurvive(mutated) = %d findings, want exactly 1: %+v", len(findings), findings)
+			}
+			if findings[0].Text != passage {
+				t.Fatalf("finding.Text = %q, want %q", findings[0].Text, passage)
+			}
+		})
+	}
+}
+
+// TestU4FlagsAReconditionedPhasePointer proves U4 pins the bullet's wording
+// rather than its mere presence: re-adding the condition changes the bullet, so
+// the exact-match count drops to zero.
+func TestU4FlagsAReconditionedPhasePointer(t *testing.T) {
+	const skillID = "sdd-design"
+	content := MustRead("skills/" + skillID + "/SKILL.md")
+	bullet := participatingPhasePointers[skillID]
+
+	if count := strings.Count(content, bullet); count != 1 {
+		t.Fatalf("shipped %s carries the pointer %d times, want 1", skillID, count)
+	}
+
+	mutated := mustMutate(t, content, bullet,
+		"- **record store**: when status reports `recordStore.resolved: openrecord`, read and follow `skills/_shared/openrecord-convention.md`.")
+	if count := strings.Count(mutated, bullet); count != 0 {
+		t.Fatalf("reconditioned %s still carries the unconditional pointer %d times, want 0", skillID, count)
+	}
+}
+
+// TestU5FlagsSchemaDroppingRecordStore proves U5's first branch: the frozen
+// projection losing its recordStore block must fail. The field is not a
+// leftover — v2 changes additively, so it stays until a contract bump.
+func TestU5FlagsSchemaDroppingRecordStore(t *testing.T) {
+	schema := "```yaml\nschemaName: gentle-ai.sdd-status\nschemaVersion: 2\n" +
+		"artifactStore: openspec | engram | hybrid | none\n```"
+	findings := u5SchemaPinsRecordStoreToTheConstant("synthetic-status-contract", schema, 10)
+	if len(findings) != 1 {
+		t.Fatalf("u5SchemaPinsRecordStoreToTheConstant() = %d findings, want 1: %+v", len(findings), findings)
+	}
+	if !strings.Contains(findings[0].Why, "does not declare recordStore") {
+		t.Fatalf("finding.Why = %q, want it to name the missing recordStore block", findings[0].Why)
+	}
+}
+
+// TestU5FlagsSchemaDescribingTheDeletedAxis proves U5's second branch: keeping
+// the block but documenting the old config-derived values — the exact drift
+// this change repaired — must fail on both children.
+func TestU5FlagsSchemaDescribingTheDeletedAxis(t *testing.T) {
+	schema := "```yaml\nartifactStore: openspec | engram | hybrid | none\nrecordStore:\n" +
+		"  declared: <verbatim sdd.record_store value from openspec/config.yaml, empty when absent>\n" +
+		"  resolved: openrecord | <empty>\n```"
+	findings := u5SchemaPinsRecordStoreToTheConstant("synthetic-status-contract", schema, 10)
+	if len(findings) != 2 {
+		t.Fatalf("u5SchemaPinsRecordStoreToTheConstant() = %d findings, want 2 (declared and resolved): %+v", len(findings), findings)
+	}
+	for _, f := range findings {
+		if !strings.Contains(f.Why, openRecordProjectionConstant) {
+			t.Fatalf("finding.Why = %q, want it to name the projection constant", f.Why)
+		}
+	}
+}
+
+// TestC3cDetectsConflationFixture pins the conflation shape: widening the
+// artifact-store prohibition to also name recordStore.
 func TestC3cDetectsConflationFixture(t *testing.T) {
 	text := "Do NOT detect the artifact store, and do NOT branch on it, including `recordStore`."
 	units := segment(text, 1)
@@ -705,8 +939,8 @@ func TestC3cAllowsProhibitionAndRecordStoreInSeparateSentences(t *testing.T) {
 	}
 }
 
-// TestC3aFlagsMissingScopingSentence pins the spec's second failure
-// scenario: removing Section B's scoping sentence.
+// TestC3aFlagsMissingScopingSentence pins the scoping failure scenario:
+// removing Section B's scoping sentence.
 func TestC3aFlagsMissingScopingSentence(t *testing.T) {
 	text := "The orchestrator injects the artifact store and the locators native status already resolved. Read what you are given.\n\n" +
 		"**Do NOT detect the artifact store, and do NOT branch on it.** The dispatcher resolved it from the store the workspace DECLARES."
@@ -717,12 +951,13 @@ func TestC3aFlagsMissingScopingSentence(t *testing.T) {
 	}
 }
 
-// TestC3bFlagsWhenProhibitionMarkersVanish is the guard's own anti-vacuity
-// self-check: when every prohibition literal disappears from Section B, the
-// guard must say so rather than pass with nothing left to compare.
+// TestC3bFlagsWhenProhibitionMarkersVanish is the artifact-store half's own
+// anti-vacuity self-check: when every prohibition literal disappears from a
+// surface, the guard must say so rather than pass with nothing left to
+// compare.
 func TestC3bFlagsWhenProhibitionMarkersVanish(t *testing.T) {
 	text := "The orchestrator injects the store you were given. This prohibition is about the artifact " +
-		"store specifically; recordStore may legitimately behave differently."
+		"store specifically; the record store is not an axis at all."
 	units := segment(text, 1)
 	findings := c3bMarkersStillMatch("synthetic-section-b", units)
 	if len(findings) != 1 {
@@ -733,206 +968,8 @@ func TestC3bFlagsWhenProhibitionMarkersVanish(t *testing.T) {
 	}
 }
 
-// TestC4FlagsDispatcherSurfaceWithNoRecordStoreMention pins the CRITICAL this
-// checker exists to close: a guard-shaped dispatcher surface that names only
-// the artifactStore sentence and bullets, with no recordStore mention at
-// all, must fail naming the missing mention — without this fixture, deleting
-// the clause would be invisible.
-func TestC4FlagsDispatcherSurfaceWithNoRecordStoreMention(t *testing.T) {
-	text := "It resolves the artifact store the workspace declares and reports it in `artifactStore`.\n\n" +
-		"- Do NOT determine the artifact store yourself, and do NOT branch on it. The dispatcher already did.\n" +
-		"- Use the dispatcher for every store and treat its JSON as authoritative over prompt inference."
-	findings := c4ForwardFraming("synthetic-dispatcher", text, 1)
-	if len(findings) < 1 {
-		t.Fatalf("c4ForwardFraming() = %d findings, want at least 1", len(findings))
-	}
-	found := false
-	for _, f := range findings {
-		if strings.Contains(f.Why, "does not name recordStore") {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("findings = %+v, want one naming the missing recordStore mention", findings)
-	}
-}
-
-// TestC4FlagsRecordStoreMentionedButNotForwarded proves C4 is more than
-// strings.Contains("recordStore"): a surface that reports the fact but never
-// states it forwards it must fail on the forward half alone.
-func TestC4FlagsRecordStoreMentionedButNotForwarded(t *testing.T) {
-	text := "It also resolves the record store the workspace declares, reporting it in `recordStore.resolved`."
-	findings := c4ForwardFraming("synthetic-dispatcher", text, 1)
-	if len(findings) != 1 {
-		t.Fatalf("c4ForwardFraming() = %d findings, want 1: %+v", len(findings), findings)
-	}
-	if !strings.Contains(findings[0].Why, "forward") {
-		t.Fatalf("finding.Why = %q, want it to name the missing forward marker", findings[0].Why)
-	}
-}
-
-// TestC4AcceptsBothDispatcherRegisters proves the report/forward families are
-// not so narrow that they match one file only: one synthetic surface mirrors
-// claude-workflow's terse one-line bullet register, the other mirrors
-// status-contract's long-bullet register — both must pass with zero findings.
-func TestC4AcceptsBothDispatcherRegisters(t *testing.T) {
-	registers := map[string]string{
-		"terse register (claude-workflow-shaped)": "- Forward `recordStore.resolved` into every phase launch alongside " +
-			"`artifactStore` and `artifactPaths`; do NOT resolve the record store yourself — the dispatcher already " +
-			"did, reporting it in `recordStore.resolved`.",
-		"long-bullet register (status-contract-shaped)": "The native dispatcher also resolves the record store the " +
-			"workspace declares in `sdd.record_store` and reports it as `recordStore.declared` (the verbatim config " +
-			"value) and `recordStore.resolved` (`openrecord`, or empty when the workspace declares no record " +
-			"store). Forward `recordStore` into every phase launch alongside `artifactStore` and `artifactPaths`; " +
-			"never resolve it yourself.",
-	}
-	for name, text := range registers {
-		findings := c4ForwardFraming("synthetic-"+name, text, 1)
-		if len(findings) != 0 {
-			t.Fatalf("c4ForwardFraming(%s) = %d findings, want 0: %+v", name, len(findings), findings)
-		}
-	}
-}
-
-// TestC1FlagsPhaseSurfaceWithNoRecordStoreMention pins defect 3: a
-// phase-facing surface that names recordStore nowhere must fail C1 rather
-// than pass silently, mirroring what C4 has always done for dispatcher-facing
-// surfaces.
-func TestC1FlagsPhaseSurfaceWithNoRecordStoreMention(t *testing.T) {
-	content := MustRead("skills/_shared/openrecord-convention.md")
-	section := markdownSection(content, "## Activation")
-	if section == "" {
-		t.Fatal("heading \"## Activation\" not found")
-	}
-
-	if findings := c1InjectionFraming("shipped-activation", section, 1); len(findings) != 0 {
-		t.Fatalf("c1InjectionFraming(shipped) = %d findings, want 0: %+v", len(findings), findings)
-	}
-
-	mutated := section
-	for strings.Contains(mutated, "recordStore") {
-		mutated = mustMutate(t, mutated, "recordStore", "artifactStore")
-	}
-	if strings.Contains(mutated, "recordStore") {
-		t.Fatal("mutant still names recordStore somewhere")
-	}
-
-	findings := c1InjectionFraming("mutant-activation", mutated, 1)
-	if len(findings) != 1 {
-		t.Fatalf("c1InjectionFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
-	}
-}
-
-// TestC1FlagsRecordStoreNamedButUnframed proves the new mandatory-absence
-// branch (Task 4.1) did not swallow C1's two pre-existing framing branches: a
-// fully-framed synthetic surface passes first (positive), then stripping
-// each marker family in turn — via mustMutate, never by hand-writing the
-// mutant — must yield exactly one finding naming that family alone, distinct
-// from the absence finding TestC1FlagsPhaseSurfaceWithNoRecordStoreMention
-// covers. Synthetic on purpose: this fixture's subject is c1InjectionFraming's
-// control flow, not any shipped asset's wording.
-func TestC1FlagsRecordStoreNamedButUnframed(t *testing.T) {
-	const text = "The orchestrator injects the recordStore value; the dispatcher resolved it before you read it."
-
-	if findings := c1InjectionFraming("synthetic-phase", text, 1); len(findings) != 0 {
-		t.Fatalf("c1InjectionFraming(framed) = %d findings, want 0: %+v", len(findings), findings)
-	}
-
-	t.Run("injection-marker-stripped", func(t *testing.T) {
-		mutated := mustMutate(t, text, "injects", "handles")
-		findings := c1InjectionFraming("synthetic-phase", mutated, 1)
-		if len(findings) != 1 {
-			t.Fatalf("c1InjectionFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
-		}
-		if !strings.Contains(findings[0].Why, "no injection-framing marker") {
-			t.Fatalf("finding.Why = %q, want it to name the missing injection marker", findings[0].Why)
-		}
-	})
-
-	t.Run("resolution-marker-stripped", func(t *testing.T) {
-		mutated := mustMutate(t, text, "dispatcher resolved", "already knows about")
-		findings := c1InjectionFraming("synthetic-phase", mutated, 1)
-		if len(findings) != 1 {
-			t.Fatalf("c1InjectionFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
-		}
-		if !strings.Contains(findings[0].Why, "no resolution marker") {
-			t.Fatalf("finding.Why = %q, want it to name the missing resolution marker", findings[0].Why)
-		}
-	})
-}
-
-// TestC4FlagsForwardClauseRelocatedToArtifactStore pins defect 2's relocation
-// shape: the report framing stays attached to recordStore elsewhere in the
-// section, but the forward phrase itself has moved onto a sentence naming
-// only artifactStore. Before the anchored markers, this shape passed
-// vacuously — the bare phrase "into every phase launch" still matched.
-func TestC4FlagsForwardClauseRelocatedToArtifactStore(t *testing.T) {
-	content := MustRead("skills/_shared/sdd-status-contract.md")
-	section := markdownSection(content, "## Native Engine")
-	if section == "" {
-		t.Fatal("heading \"## Native Engine\" not found")
-	}
-
-	if findings := c4ForwardFraming("shipped-status-contract", section, 1); len(findings) != 0 {
-		t.Fatalf("c4ForwardFraming(shipped) = %d findings, want 0: %+v", len(findings), findings)
-	}
-
-	const shippedForwardClause = "Forward `recordStore` into every phase launch alongside `artifactStore` and `artifactPaths`; never resolve it yourself."
-	const relocatedClause = "Forward `artifactStore` into every phase launch alongside `artifactPaths`; never resolve it yourself."
-	mutated := mustMutate(t, section, shippedForwardClause, relocatedClause)
-
-	if !strings.Contains(mutated, "into every phase launch") {
-		t.Fatal("mutated section no longer contains the bare phrase \"into every phase launch\" — the mutation removed more than intended")
-	}
-	if !strings.Contains(mutated, "recordStore") {
-		t.Fatal("mutated section no longer names recordStore anywhere — this would be the deletion shape, not the relocation shape")
-	}
-
-	findings := c4ForwardFraming("mutant-status-contract", mutated, 1)
-	if len(findings) != 1 {
-		t.Fatalf("c4ForwardFraming(mutated) = %d findings, want 1: %+v", len(findings), findings)
-	}
-	if !strings.Contains(findings[0].Why, "forward") {
-		t.Fatalf("finding.Why = %q, want it to name the missing forward marker", findings[0].Why)
-	}
-}
-
-// TestC5FlagsProseWithoutSchemaDeclaration proves C5 asserts the schema half:
-// prose names both JSON fields, but the schema region drops the recordStore
-// block entirely.
-func TestC5FlagsProseWithoutSchemaDeclaration(t *testing.T) {
-	prose := "reports it as `recordStore.declared` (the verbatim config value) and `recordStore.resolved`."
-	schema := "```yaml\nschemaName: gentle-ai.sdd-status\nschemaVersion: 2\n" +
-		"artifactStore: openspec | engram | hybrid | none\n```"
-	findings := c5ProseSchemaAgreement("synthetic-status-contract", prose, schema, 1, 10)
-	if len(findings) != 1 {
-		t.Fatalf("c5ProseSchemaAgreement() = %d findings, want 1: %+v", len(findings), findings)
-	}
-	if !strings.Contains(findings[0].Why, "schema") {
-		t.Fatalf("finding.Why = %q, want it to name the schema half", findings[0].Why)
-	}
-}
-
-// TestC5FlagsSchemaDeclarationWithoutProse proves C5 asserts the prose half
-// too — without this fixture, a one-sided C5 checking only the schema region
-// would still pass TestC5FlagsProseWithoutSchemaDeclaration.
-func TestC5FlagsSchemaDeclarationWithoutProse(t *testing.T) {
-	prose := "The native dispatcher resolves the artifact store the workspace declares and reports it in `artifactStore`."
-	schema := "```yaml\nartifactStore: openspec | engram | hybrid | none\nrecordStore:\n" +
-		"  declared: <verbatim sdd.record_store value from openspec/config.yaml, empty when absent>\n" +
-		"  resolved: openrecord | <empty>\n```"
-	findings := c5ProseSchemaAgreement("synthetic-status-contract", prose, schema, 1, 10)
-	if len(findings) != 1 {
-		t.Fatalf("c5ProseSchemaAgreement() = %d findings, want 1: %+v", len(findings), findings)
-	}
-	if !strings.Contains(findings[0].Why, "prose") {
-		t.Fatalf("finding.Why = %q, want it to name the prose half", findings[0].Why)
-	}
-}
-
-// TestC3cDetectsConflationInBulletRegister proves C3c reaches the new
-// surfaces' bullet register, not only the paragraph shape the shipped
-// fixture uses.
+// TestC3cDetectsConflationInBulletRegister proves C3c reaches the bullet
+// register, not only the paragraph shape the shipped fixture uses.
 func TestC3cDetectsConflationInBulletRegister(t *testing.T) {
 	text := "- Do NOT determine the artifact store yourself, and do NOT branch on it, including `recordStore`."
 	units := segment(text, 1)
@@ -962,18 +999,19 @@ func TestC3bFlagsWhenStatusContractProhibitionVanishes(t *testing.T) {
 	}
 }
 
-// TestSurfaceRegistryDeclaresAVerdictForEveryCondition is what makes "scope
-// is declared, never omitted" enforceable rather than aspirational: the real
-// shipped registry passes; a copy missing a Conditions key or carrying an
-// unknown Facing value fails, naming the offending surface and key/value.
+// TestSurfaceRegistryDeclaresAVerdictForEveryCondition is what makes "scope is
+// declared, never omitted" enforceable rather than aspirational: the real
+// shipped registry passes; a copy missing a Conditions key, or pinning no
+// passage at all, fails naming the offending surface.
 func TestSurfaceRegistryDeclaresAVerdictForEveryCondition(t *testing.T) {
 	if findings := validateSurfaceRegistry(surfaceRegistry); len(findings) != 0 {
 		t.Fatalf("validateSurfaceRegistry(surfaceRegistry) = %d findings, want 0: %+v", len(findings), findings)
 	}
 
 	missingKey := []surfaceSpec{{
-		ID: "broken-missing-key", Path: "x", Heading: "x", Facing: facingPhase,
-		Conditions: map[string]bool{"C2": false, "C3a": true, "C3b": true},
+		ID: "broken-missing-key", Path: "x", Heading: "x",
+		Passages:   []string{"something"},
+		Conditions: map[string]bool{"C3a": true, "C3b": true},
 	}}
 	findings := validateSurfaceRegistry(missingKey)
 	if len(findings) != 1 {
@@ -983,15 +1021,15 @@ func TestSurfaceRegistryDeclaresAVerdictForEveryCondition(t *testing.T) {
 		t.Fatalf("finding.Why = %q, want it to name the missing key C3c", findings[0].Why)
 	}
 
-	unknownFacing := []surfaceSpec{{
-		ID: "broken-facing", Path: "x", Heading: "x", Facing: "neither",
-		Conditions: map[string]bool{"C2": false, "C3a": false, "C3b": false, "C3c": false},
+	noPassages := []surfaceSpec{{
+		ID: "broken-no-passages", Path: "x", Heading: "x",
+		Conditions: map[string]bool{"C3a": false, "C3b": false, "C3c": false},
 	}}
-	findings = validateSurfaceRegistry(unknownFacing)
+	findings = validateSurfaceRegistry(noPassages)
 	if len(findings) != 1 {
-		t.Fatalf("validateSurfaceRegistry(unknown Facing) = %d findings, want 1: %+v", len(findings), findings)
+		t.Fatalf("validateSurfaceRegistry(no passages) = %d findings, want 1: %+v", len(findings), findings)
 	}
-	if !strings.Contains(findings[0].Why, "neither") {
-		t.Fatalf("finding.Why = %q, want it to name the offending Facing value", findings[0].Why)
+	if !strings.Contains(findings[0].Why, "pins no passage") {
+		t.Fatalf("finding.Why = %q, want it to name the empty passage list", findings[0].Why)
 	}
 }

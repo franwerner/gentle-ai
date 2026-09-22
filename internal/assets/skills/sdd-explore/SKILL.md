@@ -44,9 +44,7 @@ The orchestrator will give you:
 - **openspec**: Read and follow `skills/_shared/openspec-convention.md`.
 - **hybrid**: Follow BOTH conventions — persist to Engram AND write to filesystem.
 - **none**: Return result only.
-<--:openrecord-->
-- **record store**: when status reports `recordStore.resolved: openrecord`, read and follow `skills/_shared/openrecord-convention.md`.
-<--:/openrecord-->
+- **record store**: read and follow `skills/_shared/openrecord-convention.md`.
 
 ### Retrieving Context
 
