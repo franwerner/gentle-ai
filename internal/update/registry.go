@@ -101,7 +101,7 @@ var Tools = []ToolInfo{
 		// go-install and every other machine to the script. Both destinations
 		// are listed in FallbackPaths so detection finds whichever exists.
 		InstallMethod: InstallScript,
-		GoImportPath:  "github.com/franwerner/openrecord/cmd/openrecord",
+		GoImportPath:  "github.com/franwerner/open-record/cmd/openrecord",
 		FallbackPaths: openrecord.FallbackPaths,
 		PostUpgrade:   openrecord.PostUpgrade,
 	},

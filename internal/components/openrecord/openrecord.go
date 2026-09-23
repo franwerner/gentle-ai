@@ -12,7 +12,7 @@ import (
 	"github.com/franwerner/gentle-ai/v3/internal/model"
 )
 
-const goImportPath = "github.com/franwerner/openrecord/cmd/openrecord"
+const goImportPath = "github.com/franwerner/open-record/cmd/openrecord"
 
 // installScriptURL points at the script's documented curl|bash invocation
 // (copia/open-record/scripts/install.sh header comment), always the current
