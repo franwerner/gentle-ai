@@ -185,7 +185,7 @@ var participatingPhasePointers = map[string]string{
 	"sdd-spec":    "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
 	"sdd-design":  "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
 	"sdd-apply":   "- **record store**: read and follow `skills/_shared/openrecord-convention.md`.",
-	"sdd-verify":  "- **record store**: read and follow `skills/_shared/openrecord-convention.md`. Run `openrecord validate` for structural shape and separately check that each record's prose still describes the system as actually built.",
+	"sdd-verify":  "- **record store**: read and follow `skills/_shared/openrecord-convention.md`. Run `openrecord validate` for structural shape and delegate the prose check, record by record, to `skills/openrecord-audit/SKILL.md`; a contradiction it finds stops and goes to a person, never an automatic rewrite.",
 }
 
 // validateSurfaceRegistry fails a surface whose Conditions map is missing one

@@ -26,8 +26,8 @@ whether this convention is in force. It is.
 | `sdd-propose` | **Contradiction-checks.** Runs the "When your work contradicts an accepted record" check below before its approval gate is offered. |
 | `sdd-spec` | **Contradiction-checks, and proposes behaviour.** Same check as propose. Additionally names each capability's type and writes its affected sections out whole, reading the record that already exists so nothing it held is lost. Spec never writes a record file. |
 | `sdd-design` | **Consults and contradiction-checks.** Additionally proposes new records — `## Architecture Decisions` is where a new record appears as a proposal with its rationale. Design never writes a record file. |
-| `sdd-apply` | **Writes.** The sole writer — the contract is under "Writing records" below, the commands in `skills/openrecord-capture/SKILL.md`. |
-| `sdd-verify` | **Validates.** Runs `openrecord validate` for structural shape, and separately checks that each record's prose still describes the system as actually built — a check the binary cannot do. |
+| `sdd-apply` | **Writes, then reconciles.** The sole writer — the contract is under "Writing records" below, the commands in `skills/openrecord-capture/SKILL.md`. Runs the neighbourhood check documented in `skills/openrecord-reconcile/SKILL.md` against each record right after it lands, one anchor at a time. |
+| `sdd-verify` | **Validates.** Runs `openrecord validate` for structural shape, and runs the audit documented in `skills/openrecord-audit/SKILL.md` — claim by claim, with `file:line` evidence — to check whether each record's prose still describes the system as actually built. |
 
 `sdd-init`, `sdd-onboard`, `sdd-research`, `sdd-tasks` and `sdd-archive` never touch the record store.
 The remediation loop inherits `sdd-apply`'s writer contract; `sdd-archive` writes nothing into it.
@@ -42,6 +42,17 @@ copy cannot fall out of step with the binary.
 
 If that file is not there for you, say so and stop the consult, per the preamble — do not improvise the
 walk.
+
+## The audit (verify)
+
+The claim-by-claim check — separating what a record claims from why it claims it, resolving the surface
+it governs, reading the code whole rather than grepping for the record's own wording, and giving each
+claim a verdict backed by `file:line` evidence — is documented in `skills/openrecord-audit/SKILL.md`,
+beside this file under the same skills root. Run the audit from there. This convention keeps no copy of
+it, precisely so that a copy cannot fall out of step with the binary.
+
+If that file is not there for you, say so and stop the audit, per the preamble — do not improvise the
+check.
 
 ## A record that is `pending` settles nothing
 
@@ -182,6 +193,33 @@ was never written. `sdd-verify` is what catches it: a design carrying `## Archit
 entries whose reasoning reached no record is a CRITICAL finding there, not a note. Apply reports;
 verify escalates.
 
+**Reconciling after each write.** Immediately after `record write` or `record edit` lands for a record,
+run the neighbourhood check documented in `skills/openrecord-reconcile/SKILL.md`, beside this file under
+the same skills root, with that record as the anchor. The anchor mechanism is single-record by design,
+so a batch that materializes several records runs this check that many times — once per record, never
+once for the whole batch. Do this per record as it lands, before the design-artifact rewrite below,
+which stays a once-per-batch pass.
+
+If that file is not there for you, say so and stop the reconcile, per the preamble — do not improvise
+the neighbourhood check.
+
+**Reconcile's findings.** `skills/openrecord-reconcile/SKILL.md` reports four categories, and they do
+not all belong in the same lane. A direct contradiction and a spec asking for what a decision forbids
+are both cases of two `accepted` records — or a spec and a decision — that cannot both hold right now;
+they stop under the discipline of "When your work contradicts an accepted
+record" above — stop only the line of work that depends on the conflict, both sides in view, never
+resolved here — but take their shape from `skills/openrecord-reconcile/SKILL.md`, which pairs the
+anchor against the other record rather than against the work that section's block is written for. Duplication and a broken dependency are store hygiene,
+not a work-stopping contradiction today, and the `STOPPED` block is not built for either of them; name
+them in the `### Issues Found` section the return already carries instead, the same lane a missing
+record store is named in above.
+
+Reconcile's third neighbourhood source depends on `openrecord search`'s semantic pass, which can run,
+degrade to a lexical-only search, or come back unavailable. Report which of the three happened, exactly
+as `skills/openrecord-reconcile/SKILL.md` itself requires, rather than letting a thinner reconcile — one
+that saw fewer neighbours because the meaning-based pass did not run — read the same as a clean one. A
+degraded pass does not block `sdd-apply`; failing to report the degradation does.
+
 **After a record exists, the design artifact stops carrying its reasoning.** `sdd-design` writes each
 decision's `**Choice**`, `**Alternatives considered**` and `**Rationale**` in full, and must keep doing
 so — that artifact is the only channel the reasoning has to reach `sdd-apply`. Once the record holds
@@ -231,7 +269,25 @@ anyone's editor, so carrying this guard is this convention's job, not the tool's
 anchors) and now also for `body-hash-mismatch` — a record whose body no longer matches the hash the
 tool stamped when it was last written or edited through the binary, meaning something changed it
 outside `record write` / `record edit`. That check is detection, not prevention: it finds the edit
-after the fact, it does not stop it from happening. Separately, `sdd-verify` checks that a record's
-prose still matches the system as built — a judgement the binary cannot make. A record `sdd-verify`
-refutes is rewritten in the remediation loop, under this same writer contract; `sdd-archive` writes
-nothing into the record store, ever.
+after the fact, it does not stop it from happening.
+
+Separately, `sdd-verify` runs the audit documented in `skills/openrecord-audit/SKILL.md` against each
+record's prose, claim by claim, with `file:line` evidence — a judgement the binary cannot make on its
+own. Audit only detects, by its own hard limit: it never edits the record, never fixes the code, and
+never changes `status`, not even when the fix looks small. Detecting a contradiction is a disciplined
+judgement backed by mandatory evidence, which an SDD phase can do unattended; resolving one — deciding
+which side is wrong — is never inferred, and is always a person's call.
+
+That split matters most exactly here, because `sdd-verify` runs immediately after `sdd-apply`, and
+`sdd-apply` wrote both the code and the record in that same cycle. A contradiction the audit finds at
+this point is most likely apply having implemented something different from what it recorded, not a
+record that aged out on its own. Rewriting the record to match the code would do two harmful things at
+once: it would hide that implementation defect, and it would stamp the defect into the store as a
+ratified decision that later readers treat as settled.
+
+So a contradiction the audit finds stops that line of work under the discipline of "When your work
+contradicts an accepted record" above, and surfaces in the `STOPPED` block `skills/openrecord-audit/SKILL.md`
+carries for it — which sets the record against the code, not against the work that section's own block is
+written for. The remediation loop never resolves it, and never rewrites the record on the audit's say-so. Accept the consequence this carries: a contradiction here
+means the SDD cycle stops and asks, every time. `sdd-archive` writes nothing into the record store,
+ever.
