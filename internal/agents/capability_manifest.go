@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/agents/capabilitymanifest"
+	"github.com/franwerner/gentle-ai/v3/internal/agents/capabilitymanifest"
 )
 
 var (

@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/telemetry"
+	"github.com/franwerner/gentle-ai/v3/internal/telemetry"
 )
 
 const OpenCodeSchema = "gentle-ai.telemetry-opencode/v1"

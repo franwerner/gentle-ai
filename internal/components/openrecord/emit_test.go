@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
 )
 
 func stageOpenRecordSkills(t *testing.T, files map[string]string) string {

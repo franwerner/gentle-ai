@@ -10,13 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/backup"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/openrecord"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/planner"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/state"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/verify"
+	"github.com/franwerner/gentle-ai/v3/internal/backup"
+	"github.com/franwerner/gentle-ai/v3/internal/components/communitytool"
+	"github.com/franwerner/gentle-ai/v3/internal/components/openrecord"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/planner"
+	"github.com/franwerner/gentle-ai/v3/internal/state"
+	"github.com/franwerner/gentle-ai/v3/internal/verify"
 )
 
 // stageOpenRecordEmit replaces runCommand and cmdLookPath for the duration of

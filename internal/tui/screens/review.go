@@ -3,9 +3,9 @@ package screens
 import (
 	"strings"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/planner"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/tui/styles"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/planner"
+	"github.com/franwerner/gentle-ai/v3/internal/tui/styles"
 )
 
 func ReviewOptions() []string {

@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewerprovider"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewerprovider"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
 )
 
 // piRefuterReview builds a reviewing authority whose one captured lens carries

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/catalog"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewerprovider"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/catalog"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewerprovider"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
 )
 
 // TestImmutableReviewRuntimeMatrix keeps runtime advertisement fail-closed for

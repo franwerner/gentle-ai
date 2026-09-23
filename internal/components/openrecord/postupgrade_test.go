@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/state"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/state"
 )
 
 // installFakeOpenRecordCLI puts a fake "openrecord" script on PATH that

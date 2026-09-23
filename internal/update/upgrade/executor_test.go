@@ -13,14 +13,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/agents"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/backup"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/gga"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/sdd"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/state"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/system"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/update"
+	"github.com/franwerner/gentle-ai/v3/internal/agents"
+	"github.com/franwerner/gentle-ai/v3/internal/backup"
+	"github.com/franwerner/gentle-ai/v3/internal/components/gga"
+	"github.com/franwerner/gentle-ai/v3/internal/components/sdd"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/state"
+	"github.com/franwerner/gentle-ai/v3/internal/system"
+	"github.com/franwerner/gentle-ai/v3/internal/update"
 )
 
 // --- helpers ---

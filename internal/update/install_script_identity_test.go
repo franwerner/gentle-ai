@@ -95,19 +95,19 @@ func TestInstallScriptsResolveReleasesFromTheFork(t *testing.T) {
 	}
 
 	bashAllowed := []string{
-		`GO_MODULE_PATH="github.com/gentleman-programming/gentle-ai/v2"`,
-		"prepend_go_env_pattern GONOSUMDB github.com/gentleman-programming/gentle-ai/v2",
-		"prepend_go_env_pattern GOPRIVATE github.com/gentleman-programming/gentle-ai/v2",
-		"prepend_go_env_pattern GONOPROXY github.com/gentleman-programming/gentle-ai/v2",
+		`GO_MODULE_PATH="github.com/franwerner/gentle-ai/v3"`,
+		"prepend_go_env_pattern GONOSUMDB github.com/franwerner/gentle-ai/v3",
+		"prepend_go_env_pattern GOPRIVATE github.com/franwerner/gentle-ai/v3",
+		"prepend_go_env_pattern GONOPROXY github.com/franwerner/gentle-ai/v3",
 	}
 	assertOnlyAllowedOccurrences(t, "install.sh", bash, bashAllowed)
 
 	psAllowed := []string{
-		`$GO_MODULE_PATH = "github.com/gentleman-programming/gentle-ai/v2"`,
-		`$STABLE_SOURCE_COMMAND = "go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@latest"`,
-		`Add-GoEnvPattern -Name "GONOSUMDB" -Pattern "github.com/gentleman-programming/gentle-ai/v2"`,
-		`Add-GoEnvPattern -Name "GOPRIVATE" -Pattern "github.com/gentleman-programming/gentle-ai/v2"`,
-		`Add-GoEnvPattern -Name "GONOPROXY" -Pattern "github.com/gentleman-programming/gentle-ai/v2"`,
+		`$GO_MODULE_PATH = "github.com/franwerner/gentle-ai/v3"`,
+		`$STABLE_SOURCE_COMMAND = "go install github.com/franwerner/gentle-ai/v3/cmd/gentle-ai@latest"`,
+		`Add-GoEnvPattern -Name "GONOSUMDB" -Pattern "github.com/franwerner/gentle-ai/v3"`,
+		`Add-GoEnvPattern -Name "GOPRIVATE" -Pattern "github.com/franwerner/gentle-ai/v3"`,
+		`Add-GoEnvPattern -Name "GONOPROXY" -Pattern "github.com/franwerner/gentle-ai/v3"`,
 	}
 	assertOnlyAllowedOccurrences(t, "install.ps1", powershell, psAllowed)
 }
@@ -137,7 +137,7 @@ func assertOnlyAllowedOccurrences(t *testing.T, scriptName, script string, allow
 // axis itself: it must stay the fixed module path on both channels, whatever
 // the release axis is set to.
 func TestInstallScriptsGoInstallTargetIsTheUnchangedModulePath(t *testing.T) {
-	const wantModulePath = "github.com/gentleman-programming/gentle-ai/v2"
+	const wantModulePath = "github.com/franwerner/gentle-ai/v3"
 
 	bash := installScriptContent(t, "install.sh")
 	if !strings.Contains(bash, `GO_MODULE_PATH="`+wantModulePath+`"`) {

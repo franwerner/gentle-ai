@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/telemetryruntime"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/telemetry"
+	"github.com/franwerner/gentle-ai/v3/internal/components/telemetryruntime"
+	"github.com/franwerner/gentle-ai/v3/internal/telemetry"
 )
 
 // Tests inject transport and the stdin deadline. Native execution never spawns

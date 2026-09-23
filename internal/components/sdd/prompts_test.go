@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/agents"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/assets"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/opencode"
+	"github.com/franwerner/gentle-ai/v3/internal/agents"
+	"github.com/franwerner/gentle-ai/v3/internal/assets"
+	"github.com/franwerner/gentle-ai/v3/internal/components/communitytool"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/opencode"
 )
 
 // TestSharedPromptDir verifies the expected directory path is returned.

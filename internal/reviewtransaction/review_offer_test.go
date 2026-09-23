@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/state"
+	"github.com/franwerner/gentle-ai/v3/internal/state"
 )
 
 // TestOfferReviewAfterVerifyDisabledKillSwitchReturnsUnavailableBeforeRepoRead

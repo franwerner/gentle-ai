@@ -3,7 +3,7 @@ package sddstatus
 import (
 	"context"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
 )
 
 // review_door.go is internal/sddstatus's one door into reviewtransaction's

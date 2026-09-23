@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
+	"github.com/franwerner/gentle-ai/v3/internal/components/communitytool"
 )
 
 // BinaryName is the command name installed by both routes of InstallMethod

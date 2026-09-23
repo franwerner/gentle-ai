@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/pathquote"
+	"github.com/franwerner/gentle-ai/v3/internal/pathquote"
 )
 
 // TestRuntimeLedgerRefusesFinishFromADifferentLinkedWorktreeThanBegin is the

@@ -6,9 +6,9 @@ import (
 	"os/exec"
 	"slices"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/state"
+	"github.com/franwerner/gentle-ai/v3/internal/components/communitytool"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/state"
 )
 
 // PostUpgrade is openrecord's update.ToolInfo.PostUpgrade step: re-emit and

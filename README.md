@@ -10,7 +10,7 @@
 <p><strong>Turn the AI coding agent you already use into a configured engineering environment.</strong></p>
 
 <p>
-<a href="https://github.com/Gentleman-Programming/gentle-ai/releases"><img src="https://img.shields.io/github/v/release/Gentleman-Programming/gentle-ai?style=for-the-badge&labelColor=1A1218&color=F095C8" alt="Release"></a>
+<a href="https://github.com/franwerner/gentle-ai/releases"><img src="https://img.shields.io/github/v/release/franwerner/gentle-ai?style=for-the-badge&labelColor=1A1218&color=F095C8" alt="Release"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-F095C8?style=for-the-badge&labelColor=1A1218" alt="License: MIT"></a>
 <img src="https://img.shields.io/badge/Go-1.25.10+-D7A0B8?style=for-the-badge&labelColor=1A1218&logo=go&logoColor=F095C8" alt="Go 1.25.10+">
 <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux%20%C2%B7%20Windows-D7A0B8?style=for-the-badge&labelColor=1A1218" alt="Platform">
@@ -262,17 +262,22 @@ Gentle-AI configures each agent using that agent's own native features, so capab
 **macOS / Linux**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@latest
+git clone https://github.com/franwerner/gentle-ai.git
+cd gentle-ai
+go build -o "$env:USERPROFILE\go\bin\gentle-ai.exe" .\cmd\gentle-ai
 ```
 
 > [!WARNING]
-> **On Windows, install from source — this is the supported path.** Windows is a fully tested platform — the complete suite runs on its CI lane — but official Windows binary distribution and Scoop are unavailable. Windows installation and upgrades require Go 1.25.10+ and fail closed to source-install guidance; they never download an unsigned Gentle AI executable or execute a remote update script.
+> **On Windows, build from source — this is the supported path.** Windows is a fully tested platform — the complete suite runs on its CI lane — but official Windows binary distribution and Scoop are unavailable. Windows installation and upgrades require Go 1.25.10+ and fail closed to source-build guidance; they never download an unsigned Gentle AI executable or execute a remote update script.
+
+> [!IMPORTANT]
+> **`go install` works only from the first release tagged after the module rename.** The module is now `github.com/franwerner/gentle-ai/v3`, but every tag published before the rename still declares the old path, so `go install github.com/franwerner/gentle-ai/v3/cmd/gentle-ai@latest` fails against them with `module declares its path as ... but was required as ...`. Until that first `v3.x` tag is published, a clone plus `go build` is the source path that always works. A plain `go build` stamps the version from the module's VCS metadata; pass `-ldflags "-X main.version=<semver>"` when you need an exact version string.
 
 > **Expected result:** `gentle-ai version` prints a version number.
 
@@ -621,20 +626,27 @@ It goes to a collector we run ourselves, whose source is in this repository (`cm
 
 <br/>
 
-There are two current channels. Install `@latest` unless you are deliberately testing unreleased development code.
+There are two current channels. Take the stable one unless you are deliberately testing unreleased development code.
 
 | Channel | Current | Install |
 | --- | --- | --- |
-| **Stable** | [`v2.7.0`](https://github.com/Gentleman-Programming/gentle-ai/releases/tag/v2.7.0) | `go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@latest` |
-| **Development** | `main` | `go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@main` |
+| **Stable** | [`v3.0.1`](https://github.com/franwerner/gentle-ai/releases/tag/v3.0.1) | `curl -fsSL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh \| bash` |
+| **Development** | `main` | same script with `-s -- --channel beta`, or a clone plus `go build` |
 
 Verify with `gentle-ai version` after any of them.
 
-Use `@main` only to test changes that are not part of a release. The managed installer tracks a channel's latest version and does not accept an arbitrary release pin — use `go install` when you need an exact version.
+Use the development channel only to test changes that are not part of a release. The managed installer tracks a channel's latest version and does not accept an arbitrary release pin — check out the tag you want and `go build` it when you need an exact version:
 
-**About the `/v2` suffix:** Go requires it for major version 2 and above. Releases before `v2.0.0` use the unsuffixed import path.
+```bash
+git clone https://github.com/franwerner/gentle-ai.git
+cd gentle-ai
+git checkout v3.0.1
+go build -ldflags "-X main.version=3.0.1" -o ~/.local/bin/gentle-ai ./cmd/gentle-ai
+```
 
-**Stable `v2.7.0` publishes six archives under a signed checksum manifest:** four platform `.tar.gz` archives for macOS and Linux (amd64 and arm64), the provider-contract archive, and the release-provenance archive. `checksums.txt` covers all six and is authenticated by `checksums.txt.minisig`.
+**About the `/v3` suffix in the module path:** Go requires it for major version 2 and above, and it must match the major version of the tags you publish. This fork's module is `github.com/franwerner/gentle-ai/v3`, so Go resolves its `v3.x` tags and ignores every `v2.x` one. Tags published before the rename still declare the old module path and cannot be fetched under this one.
+
+**Stable `v3.0.1` publishes six archives under a signed checksum manifest:** four platform `.tar.gz` archives for macOS and Linux (amd64 and arm64), the provider-contract archive, and the release-provenance archive. `checksums.txt` covers all six and is authenticated by `checksums.txt.minisig`.
 
 Receipt-Driven Development became the supported stable path in `v2.2.0`; the negotiated public review contract was published in `v2.1.6`.
 
@@ -648,23 +660,25 @@ Receipt-Driven Development became the supported stable path in `v2.2.0`; the neg
 **Homebrew (macOS / Linux)**
 
 ```bash
-brew tap gentleman-programming/tap
-brew trust --formula gentleman-programming/tap/gentle-ai  # one-time, if Homebrew requires trust
+brew tap franwerner/tap
+brew trust --formula franwerner/tap/gentle-ai  # one-time, if Homebrew requires trust
 brew install gentle-ai
 ```
 
-To install several tools from this tap, run `brew trust gentleman-programming/tap` instead. That broader option trusts all current and future formulas, casks and external commands published in the tap.
+To install several tools from this tap, run `brew trust franwerner/tap` instead. That broader option trusts all current and future formulas, casks and external commands published in the tap.
 
-**Scoop (Windows)** — temporarily unavailable while official Windows binary distribution is held for public-trust Authenticode signing. Use the Windows `go install` command above.
+**Scoop (Windows)** — temporarily unavailable while official Windows binary distribution is held for public-trust Authenticode signing. Use the Windows source build above.
 
 **Beta channel (tracks `main`)** — requires Go 1.25.10+:
 
 ```bash
 # macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash -s -- --channel beta
+curl -fsSL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh | bash -s -- --channel beta
 
-# Windows (PowerShell)
-$env:GENTLE_AI_CHANNEL="beta"; go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@main
+# Windows (PowerShell) — build `main` from source
+git clone https://github.com/franwerner/gentle-ai.git
+cd gentle-ai
+go build -o "$env:USERPROFILE\go\bin\gentle-ai.exe" .\cmd\gentle-ai
 ```
 
 To update a beta installation later, preserve the channel — both installers default to stable:
@@ -677,13 +691,15 @@ GENTLE_AI_CHANNEL=beta gentle-ai upgrade
 $env:GENTLE_AI_CHANNEL="beta"; gentle-ai upgrade
 ```
 
-If a manual `go install ...@main` does not pick up recent commits because `proxy.golang.org` is stale, bypass it:
+To refresh a source build to the newest `main`, pull and rebuild the clone you already have — there is no module proxy in this path, so nothing can go stale:
 
 ```bash
-GOPROXY=direct go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@main
-# PowerShell
-$env:GOPROXY="direct"; go install github.com/gentleman-programming/gentle-ai/v2/cmd/gentle-ai@main
+git pull
+go build -o ~/.local/bin/gentle-ai ./cmd/gentle-ai
+gentle-ai install
 ```
+
+The trailing `gentle-ai install` is what redeploys the skills and agent config. The assets are embedded in the binary (`//go:embed` in `internal/assets/assets.go`), so rebuilding alone updates the binary while the agents keep reading the previously deployed files.
 
 </details>
 
@@ -707,19 +723,19 @@ Workspace scope covers agent-scoped files — system prompts, skills, SDD agents
 
 <br/>
 
-**Stable channel — Minisign.** Stable `v2.7.0` publishes six archives: four macOS/Linux platform archives, the provider-contract archive, and the release-provenance archive. All six are covered by an authenticated `checksums.txt`. The built-in upgrader verifies its Minisign signature, its exact `Gentleman-Programming/gentle-ai` + release-tag binding, and the selected platform archive checksum **before** replacing the installed binary. Release archives are capped at **128 MiB**, including chunked or unknown-length responses. Missing, oversized, malformed, untrusted or placeholder key material fails closed without changing the installed binary.
+**Stable channel — Minisign.** Stable `v3.0.1` publishes six archives: four macOS/Linux platform archives, the provider-contract archive, and the release-provenance archive. All six are covered by an authenticated `checksums.txt`. The built-in upgrader verifies its Minisign signature, its exact `franwerner/gentle-ai` + release-tag binding, and the selected platform archive checksum **before** replacing the installed binary. Release archives are capped at **128 MiB**, including chunked or unknown-length responses. Missing, oversized, malformed, untrusted or placeholder key material fails closed without changing the installed binary.
 
 To verify yourself, obtain the production public-key payload and fingerprint from a maintainer-controlled channel, then download `checksums.txt` and `checksums.txt.minisig` from the same release:
 
 ```bash
 minisign -VQm checksums.txt -x checksums.txt.minisig -P "$GENTLE_AI_MINISIGN_PUBLIC_KEY"
-# Expected output: repo=Gentleman-Programming/gentle-ai;tag=vX.Y.Z
+# Expected output: repo=franwerner/gentle-ai;tag=vX.Y.Z
 sha256sum --check --strict --ignore-missing checksums.txt
 ```
 
 Do not bootstrap trust from a public key downloaded only beside the artifacts it verifies. See [Release signing and key rotation](docs/release-signing.md).
 
-**Provider contract bundle.** Stable `v2.7.0` publishes `gentle-ai-review-provider-contract-1.2.0.tar.gz`. Verify and inspect it from the tagged source:
+**Provider contract bundle.** Stable `v3.0.1` publishes `gentle-ai-review-provider-contract-1.2.0.tar.gz`. Verify and inspect it from the tagged source:
 
 ```bash
 go run ./internal/providercontractbundlecmd verify --archive <bundle>

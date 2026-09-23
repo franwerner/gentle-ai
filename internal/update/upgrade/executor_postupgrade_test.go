@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/system"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/update"
+	"github.com/franwerner/gentle-ai/v3/internal/system"
+	"github.com/franwerner/gentle-ai/v3/internal/update"
 )
 
 // fakeGoInstallProfile routes effectiveMethod to InstallGoInstall without

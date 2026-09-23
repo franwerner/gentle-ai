@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
 )
 
 const (

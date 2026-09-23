@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/state"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/statecoord"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/state"
+	"github.com/franwerner/gentle-ai/v3/internal/statecoord"
 )
 
 func TestPersistSyncManagedAssetStateReReadsLatestStateAfterLockContention(t *testing.T) {

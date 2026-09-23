@@ -5,7 +5,7 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
 )
 
 // runtimeBeginAdmissionResult is everything Begin needs from the admission

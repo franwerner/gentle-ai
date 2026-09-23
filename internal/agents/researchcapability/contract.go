@@ -3,7 +3,7 @@
 // AgentCapabilityManifest v1 projection.
 package researchcapability
 
-import "github.com/gentleman-programming/gentle-ai/v2/internal/model"
+import "github.com/franwerner/gentle-ai/v3/internal/model"
 
 type SchemaVersion string
 

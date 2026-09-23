@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/pathidentity"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/pathidentity"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
 )
 
 func resolveBindingChangeRoot(ctx context.Context, root, workspace, change string) (string, error) {

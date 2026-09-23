@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/agents"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/agents/claude"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/agents/opencode"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/agents/vscode"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/skillregistry"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/system"
+	"github.com/franwerner/gentle-ai/v3/internal/agents"
+	"github.com/franwerner/gentle-ai/v3/internal/agents/claude"
+	"github.com/franwerner/gentle-ai/v3/internal/agents/opencode"
+	"github.com/franwerner/gentle-ai/v3/internal/agents/vscode"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/skillregistry"
+	"github.com/franwerner/gentle-ai/v3/internal/system"
 )
 
 func claudeAdapter() agents.Adapter   { return claude.NewAdapter() }

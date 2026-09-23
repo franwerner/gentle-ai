@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/mutationjournal"
+	"github.com/franwerner/gentle-ai/v3/internal/components/mutationjournal"
 	"os"
 	"path/filepath"
 	"runtime"

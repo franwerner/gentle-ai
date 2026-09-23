@@ -17,7 +17,7 @@ set -euo pipefail
 RELEASE_OWNER="franwerner"
 RELEASE_REPO="gentle-ai"
 BINARY_NAME="gentle-ai"
-GO_MODULE_PATH="github.com/gentleman-programming/gentle-ai/v2"
+GO_MODULE_PATH="github.com/franwerner/gentle-ai/v3"
 BREW_TAP="franwerner/homebrew-tap"
 BREW_FORMULA_REF="franwerner/tap/${BINARY_NAME}"
 
@@ -278,9 +278,9 @@ install_go() {
 
     info "Running: go install ${go_package}"
     if [ "${CHANNEL}" = "beta" ]; then
-        prepend_go_env_pattern GONOSUMDB github.com/gentleman-programming/gentle-ai/v2
-        prepend_go_env_pattern GOPRIVATE github.com/gentleman-programming/gentle-ai/v2
-        prepend_go_env_pattern GONOPROXY github.com/gentleman-programming/gentle-ai/v2
+        prepend_go_env_pattern GONOSUMDB github.com/franwerner/gentle-ai/v3
+        prepend_go_env_pattern GOPRIVATE github.com/franwerner/gentle-ai/v3
+        prepend_go_env_pattern GONOPROXY github.com/franwerner/gentle-ai/v3
         export GONOSUMDB GOPRIVATE GONOPROXY
 
         if ! go install "$go_package"; then

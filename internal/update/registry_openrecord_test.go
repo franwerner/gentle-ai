@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/openrecord"
+	"github.com/franwerner/gentle-ai/v3/internal/components/openrecord"
 )
 
 // TestOpenRecordRegistryEntryIsComponentCoherent pins the upgrade half of

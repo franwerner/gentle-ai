@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/components/communitytool"
-	"github.com/gentleman-programming/gentle-ai/v2/internal/model"
+	"github.com/franwerner/gentle-ai/v3/internal/components/communitytool"
+	"github.com/franwerner/gentle-ai/v3/internal/model"
 )
 
 const goImportPath = "github.com/franwerner/openrecord/cmd/openrecord"

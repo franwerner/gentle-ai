@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
 )
 
 func TestRuntimeLedgerConsumesOrdinalBeforeLaunchAndChargesNativeLines(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/tui/styles"
+	"github.com/franwerner/gentle-ai/v3/internal/tui/styles"
 )
 
 // RenderSync handles all states of the sync screen.

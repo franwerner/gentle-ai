@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/sddstatus"
+	"github.com/franwerner/gentle-ai/v3/internal/sddstatus"
 )
 
 // #2588: the bounded attempt budget was spent entirely on the apply worker

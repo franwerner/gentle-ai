@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/reviewtransaction"
+	"github.com/franwerner/gentle-ai/v3/internal/reviewtransaction"
 )
 
 // TestRuntimeLedgerLockContentionPreservesTheNonMutationProof pins the 1861

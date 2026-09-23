@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/sddstatus"
+	"github.com/franwerner/gentle-ai/v3/internal/sddstatus"
 )
 
 func TestRunSDDAttemptSettleIgnoresUnsafeRDDModeAuthority(t *testing.T) {

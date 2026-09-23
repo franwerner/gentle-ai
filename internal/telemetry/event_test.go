@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/catalog"
+	"github.com/franwerner/gentle-ai/v3/internal/catalog"
 )
 
 // TestBuildEventNeverLeaksIdentifyingData builds an event from a fixture

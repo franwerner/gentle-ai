@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gentleman-programming/gentle-ai/v2/internal/update"
+	"github.com/franwerner/gentle-ai/v3/internal/update"
 )
 
 var homebrewPackageInstalled = defaultHomebrewPackageInstalled
