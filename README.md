@@ -268,16 +268,14 @@ curl -fsSL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/i
 **Windows (PowerShell)**
 
 ```powershell
-git clone https://github.com/franwerner/gentle-ai.git
-cd gentle-ai
-go build -o "$env:USERPROFILE\go\bin\gentle-ai.exe" .\cmd\gentle-ai
+go install github.com/franwerner/gentle-ai/v3/cmd/gentle-ai@latest
 ```
 
 > [!WARNING]
-> **On Windows, build from source — this is the supported path.** Windows is a fully tested platform — the complete suite runs on its CI lane — but official Windows binary distribution and Scoop are unavailable. Windows installation and upgrades require Go 1.25.10+ and fail closed to source-build guidance; they never download an unsigned Gentle AI executable or execute a remote update script.
+> **On Windows, install from source — this is the supported path.** Windows is a fully tested platform — the complete suite runs on its CI lane — but official Windows binary distribution and Scoop are unavailable. Windows installation and upgrades require Go 1.25.10+ and fail closed to source-install guidance; they never download an unsigned Gentle AI executable or execute a remote update script.
 
 > [!IMPORTANT]
-> **`go install` works only from the first release tagged after the module rename.** The module is now `github.com/franwerner/gentle-ai/v3`, but every tag published before the rename still declares the old path, so `go install github.com/franwerner/gentle-ai/v3/cmd/gentle-ai@latest` fails against them with `module declares its path as ... but was required as ...`. Until that first `v3.x` tag is published, a clone plus `go build` is the source path that always works. A plain `go build` stamps the version from the module's VCS metadata; pass `-ldflags "-X main.version=<semver>"` when you need an exact version string.
+> **`go install` resolves this fork from `v3.0.2` onward.** The module is `github.com/franwerner/gentle-ai/v3`, and tags from `v3.0.2` carry that path. Tags published before the rename still declare the upstream path and cannot be fetched under this one, so pin `@latest` or an explicit `@v3.0.2` or newer — never an older tag. A plain `go build` from a clone stamps the version from the module's VCS metadata; pass `-ldflags "-X main.version=<semver>"` when you need an exact version string.
 
 > **Expected result:** `gentle-ai version` prints a version number.
 
@@ -630,7 +628,7 @@ There are two current channels. Take the stable one unless you are deliberately 
 
 | Channel | Current | Install |
 | --- | --- | --- |
-| **Stable** | [`v3.0.1`](https://github.com/franwerner/gentle-ai/releases/tag/v3.0.1) | `curl -fsSL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh \| bash` |
+| **Stable** | [`v3.0.2`](https://github.com/franwerner/gentle-ai/releases/tag/v3.0.2) | `curl -fsSL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh \| bash` |
 | **Development** | `main` | same script with `-s -- --channel beta`, or a clone plus `go build` |
 
 Verify with `gentle-ai version` after any of them.
@@ -640,13 +638,13 @@ Use the development channel only to test changes that are not part of a release.
 ```bash
 git clone https://github.com/franwerner/gentle-ai.git
 cd gentle-ai
-git checkout v3.0.1
-go build -ldflags "-X main.version=3.0.1" -o ~/.local/bin/gentle-ai ./cmd/gentle-ai
+git checkout v3.0.2
+go build -ldflags "-X main.version=3.0.2" -o ~/.local/bin/gentle-ai ./cmd/gentle-ai
 ```
 
 **About the `/v3` suffix in the module path:** Go requires it for major version 2 and above, and it must match the major version of the tags you publish. This fork's module is `github.com/franwerner/gentle-ai/v3`, so Go resolves its `v3.x` tags and ignores every `v2.x` one. Tags published before the rename still declare the old module path and cannot be fetched under this one.
 
-**Stable `v3.0.1` publishes six archives under a signed checksum manifest:** four platform `.tar.gz` archives for macOS and Linux (amd64 and arm64), the provider-contract archive, and the release-provenance archive. `checksums.txt` covers all six and is authenticated by `checksums.txt.minisig`.
+**Stable `v3.0.2` publishes six archives under a signed checksum manifest:** four platform `.tar.gz` archives for macOS and Linux (amd64 and arm64), the provider-contract archive, and the release-provenance archive. `checksums.txt` covers all six and is authenticated by `checksums.txt.minisig`.
 
 Receipt-Driven Development became the supported stable path in `v2.2.0`; the negotiated public review contract was published in `v2.1.6`.
 
@@ -675,10 +673,8 @@ To install several tools from this tap, run `brew trust franwerner/tap` instead.
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/franwerner/gentle-ai/main/scripts/install.sh | bash -s -- --channel beta
 
-# Windows (PowerShell) — build `main` from source
-git clone https://github.com/franwerner/gentle-ai.git
-cd gentle-ai
-go build -o "$env:USERPROFILE\go\bin\gentle-ai.exe" .\cmd\gentle-ai
+# Windows (PowerShell)
+$env:GENTLE_AI_CHANNEL="beta"; go install github.com/franwerner/gentle-ai/v3/cmd/gentle-ai@main
 ```
 
 To update a beta installation later, preserve the channel — both installers default to stable:
@@ -723,7 +719,7 @@ Workspace scope covers agent-scoped files — system prompts, skills, SDD agents
 
 <br/>
 
-**Stable channel — Minisign.** Stable `v3.0.1` publishes six archives: four macOS/Linux platform archives, the provider-contract archive, and the release-provenance archive. All six are covered by an authenticated `checksums.txt`. The built-in upgrader verifies its Minisign signature, its exact `franwerner/gentle-ai` + release-tag binding, and the selected platform archive checksum **before** replacing the installed binary. Release archives are capped at **128 MiB**, including chunked or unknown-length responses. Missing, oversized, malformed, untrusted or placeholder key material fails closed without changing the installed binary.
+**Stable channel — Minisign.** Stable `v3.0.2` publishes six archives: four macOS/Linux platform archives, the provider-contract archive, and the release-provenance archive. All six are covered by an authenticated `checksums.txt`. The built-in upgrader verifies its Minisign signature, its exact `franwerner/gentle-ai` + release-tag binding, and the selected platform archive checksum **before** replacing the installed binary. Release archives are capped at **128 MiB**, including chunked or unknown-length responses. Missing, oversized, malformed, untrusted or placeholder key material fails closed without changing the installed binary.
 
 To verify yourself, obtain the production public-key payload and fingerprint from a maintainer-controlled channel, then download `checksums.txt` and `checksums.txt.minisig` from the same release:
 
@@ -735,7 +731,7 @@ sha256sum --check --strict --ignore-missing checksums.txt
 
 Do not bootstrap trust from a public key downloaded only beside the artifacts it verifies. See [Release signing and key rotation](docs/release-signing.md).
 
-**Provider contract bundle.** Stable `v3.0.1` publishes `gentle-ai-review-provider-contract-1.2.0.tar.gz`. Verify and inspect it from the tagged source:
+**Provider contract bundle.** Stable `v3.0.2` publishes `gentle-ai-review-provider-contract-1.2.0.tar.gz`. Verify and inspect it from the tagged source:
 
 ```bash
 go run ./internal/providercontractbundlecmd verify --archive <bundle>
